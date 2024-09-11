@@ -60,3 +60,7 @@ dkms.conf
 # Rust build 
 Cargo.lock
 target
+
+# clion auto cmake dir
+cmake-*
+.idea

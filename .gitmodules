@@ -1,0 +1,3 @@
+[submodule "depends/blst"]
+	path = depends/blst
+	url = https://github.com/supranational/blst.git
