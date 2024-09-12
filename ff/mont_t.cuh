@@ -193,9 +193,9 @@ private:
 
 private:
     inline operator const uint32_t*() const             { return even;    }
-    inline operator uint32_t*()                         { return even;    }
 
 public:
+    inline operator uint32_t*()                         { return even;    }
     inline uint32_t& operator[](size_t i)               { return even[i]; }
     inline const uint32_t& operator[](size_t i) const   { return even[i]; }
     inline size_t len() const                           { return n;       }
