@@ -24,8 +24,23 @@ typedef fr_t scalar_t;
 
 #include <vect.h>
 
+__global__ void test()
+{
+    auto tmp = fp_mont::one();
+    tmp = tmp + fp_mont(5);
+    tmp.from();
+    for (auto i = 0; i < tmp.n; i++)
+        printf("%u ", tmp[i]);
+}
+
+#include "depends/blst/src/blst_t.hpp"
 int main()
 {
-    auto tmp = fp_mont(1); //ERROR : this fp_mont is not host side but device side
+//    auto tmp = fp_mont::one();
+//    printf("%lu\n", sizeof(tmp));
+//    std::cerr << tmp;
+
+    test<<<1,1>>>();
+    cudaDeviceSynchronize();
     return 0;
 }

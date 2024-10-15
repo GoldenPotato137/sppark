@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#if defined(__CUDA_ARCH__) && !defined(__SPPARK_FF_MONT_T_CUH__)
 # define __SPPARK_FF_MONT_T_CUH__
 
 # include <cstddef>
@@ -38,37 +37,36 @@ public:
     static constexpr size_t __device__ bit_length() { return N; }
     static const uint32_t degree = 1;
     using mem_t = mont_t;
-protected:
     static const size_t n = (N+31)/32;
 private:
     uint32_t even[n];
 
     static inline void mul_n(uint32_t* acc, const uint32_t* a, uint32_t bi,
-                             size_t n=n)
+                             size_t t_n=n)
     {
-        for (size_t j = 0; j < n; j += 2)
+        for (size_t j = 0; j < t_n; j += 2)
             asm("mul.lo.u32 %0, %2, %3; mul.hi.u32 %1, %2, %3;"
                 : "=r"(acc[j]), "=r"(acc[j+1])
                 : "r"(a[j]), "r"(bi));
     }
 
     static inline void cmad_n(uint32_t* acc, const uint32_t* a, uint32_t bi,
-                              size_t n=n)
+                              size_t t_n=n)
     {
         asm("mad.lo.cc.u32 %0, %2, %3, %0; madc.hi.cc.u32 %1, %2, %3, %1;"
             : "+r"(acc[0]), "+r"(acc[1])
             : "r"(a[0]), "r"(bi));
-        for (size_t j = 2; j < n; j += 2)
+        for (size_t j = 2; j < t_n; j += 2)
             asm("madc.lo.cc.u32 %0, %2, %3, %0; madc.hi.cc.u32 %1, %2, %3, %1;"
                 : "+r"(acc[j]), "+r"(acc[j+1])
                 : "r"(a[j]), "r"(bi));
         // return carry flag
     }
 
-    static inline void cadd_n(uint32_t* acc, const uint32_t* a, size_t n=n)
+    static inline void cadd_n(uint32_t* acc, const uint32_t* a, size_t t_n=n)
     {
         asm("add.cc.u32 %0, %0, %1;" : "+r"(acc[0]) : "r"(a[0]));
-        for (size_t i = 1; i < n; i++)
+        for (size_t i = 1; i < t_n; i++)
             asm("addc.cc.u32 %0, %0, %1;" : "+r"(acc[i]) : "r"(a[i]));
         // return carry flag
     }
@@ -95,15 +93,15 @@ private:
 
     private:
         static inline void mad_row(uint32_t* odd, uint32_t* even,
-                                   const uint32_t* a, uint32_t bi, size_t n=n)
+                                   const uint32_t* a, uint32_t bi, size_t t_n=n)
         {
-            cmad_n(odd, a+1, bi, n-2);
+            cmad_n(odd, a+1, bi, t_n - 2);
             asm("madc.lo.cc.u32 %0, %2, %3, 0; madc.hi.u32 %1, %2, %3, 0;"
-                : "=r"(odd[n-2]), "=r"(odd[n-1])
-                : "r"(a[n-1]), "r"(bi));
+                : "=r"(odd[t_n - 2]), "=r"(odd[t_n - 1])
+                : "r"(a[t_n - 1]), "r"(bi));
 
-            cmad_n(even, a, bi, n);
-            asm("addc.u32 %0, %0, 0;" : "+r"(odd[n-1]));
+            cmad_n(even, a, bi, t_n);
+            asm("addc.u32 %0, %0, 0;" : "+r"(odd[t_n - 1]));
         }
 
     public:
@@ -205,6 +203,16 @@ public:
     {
         for (size_t i = 0; i < n; i++)
             even[i] = p[i];
+    }
+
+    template<typename T>
+    inline explicit mont_t(T num)
+    {
+        #pragma unroll
+        for(int i = 0; i < n; i++)
+            even[i] = 0;
+        even[0] = num;
+        to();
     }
 
     inline void store(uint32_t *p) const
@@ -1142,4 +1150,3 @@ public:
 
 # undef inline
 # undef asm
-#endif
