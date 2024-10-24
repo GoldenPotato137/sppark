@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#if !defined(__SPPARK_FF_MONT_T_CUH__)
 # define __SPPARK_FF_MONT_T_CUH__
 
 # include <cstddef>
 # include <cstdint>
+# include "pow.hpp"
 
 # define inline __device__ __forceinline__
 # ifdef __GNUC__
@@ -28,6 +30,7 @@
 //
 //    __device__ __constant__ /*const*/ my_M0 = <literal>;
 //
+namespace device{
 template<const size_t N, const uint32_t MOD[(N+31)/32], const uint32_t& M0,
          const uint32_t RR[(N+31)/32], const uint32_t ONE[(N+31)/32],
          const uint32_t MODx[(N+31)/32] = MOD>
@@ -38,35 +41,38 @@ public:
     static const uint32_t degree = 1;
     using mem_t = mont_t;
     static const size_t n = (N+31)/32;
+
+    operator uint32_t*()                         { return even;    }
+
 private:
     uint32_t even[n];
 
     static inline void mul_n(uint32_t* acc, const uint32_t* a, uint32_t bi,
-                             size_t t_n=n)
+                             size_t tn=n)
     {
-        for (size_t j = 0; j < t_n; j += 2)
+        for (size_t j = 0; j < tn; j += 2)
             asm("mul.lo.u32 %0, %2, %3; mul.hi.u32 %1, %2, %3;"
                 : "=r"(acc[j]), "=r"(acc[j+1])
                 : "r"(a[j]), "r"(bi));
     }
 
     static inline void cmad_n(uint32_t* acc, const uint32_t* a, uint32_t bi,
-                              size_t t_n=n)
+                              size_t tn=n)
     {
         asm("mad.lo.cc.u32 %0, %2, %3, %0; madc.hi.cc.u32 %1, %2, %3, %1;"
             : "+r"(acc[0]), "+r"(acc[1])
             : "r"(a[0]), "r"(bi));
-        for (size_t j = 2; j < t_n; j += 2)
+        for (size_t j = 2; j < tn; j += 2)
             asm("madc.lo.cc.u32 %0, %2, %3, %0; madc.hi.cc.u32 %1, %2, %3, %1;"
                 : "+r"(acc[j]), "+r"(acc[j+1])
                 : "r"(a[j]), "r"(bi));
         // return carry flag
     }
 
-    static inline void cadd_n(uint32_t* acc, const uint32_t* a, size_t t_n=n)
+    static inline void cadd_n(uint32_t* acc, const uint32_t* a, size_t tn=n)
     {
         asm("add.cc.u32 %0, %0, %1;" : "+r"(acc[0]) : "r"(a[0]));
-        for (size_t i = 1; i < t_n; i++)
+        for (size_t i = 1; i < tn; i++)
             asm("addc.cc.u32 %0, %0, %1;" : "+r"(acc[i]) : "r"(a[i]));
         // return carry flag
     }
@@ -93,15 +99,15 @@ private:
 
     private:
         static inline void mad_row(uint32_t* odd, uint32_t* even,
-                                   const uint32_t* a, uint32_t bi, size_t t_n=n)
+                                   const uint32_t* a, uint32_t bi, size_t tn=n)
         {
-            cmad_n(odd, a+1, bi, t_n - 2);
+            cmad_n(odd, a+1, bi, tn-2);
             asm("madc.lo.cc.u32 %0, %2, %3, 0; madc.hi.u32 %1, %2, %3, 0;"
-                : "=r"(odd[t_n - 2]), "=r"(odd[t_n - 1])
-                : "r"(a[t_n - 1]), "r"(bi));
+                : "=r"(odd[tn-2]), "=r"(odd[tn-1])
+                : "r"(a[tn-1]), "r"(bi));
 
-            cmad_n(even, a, bi, t_n);
-            asm("addc.u32 %0, %0, 0;" : "+r"(odd[t_n - 1]));
+            cmad_n(even, a, bi, tn);
+            asm("addc.u32 %0, %0, 0;" : "+r"(odd[tn-1]));
         }
 
     public:
@@ -193,8 +199,7 @@ private:
     inline operator const uint32_t*() const             { return even;    }
 
 public:
-    inline operator uint32_t*()                         { return even;    }
-    inline uint32_t& operator[](size_t i)               { return even[i]; }
+    __host__ inline uint32_t& operator[](size_t i)               { return even[i]; }
     inline const uint32_t& operator[](size_t i) const   { return even[i]; }
     inline size_t len() const                           { return n;       }
 
@@ -205,8 +210,7 @@ public:
             even[i] = p[i];
     }
 
-    template<typename T>
-    inline explicit mont_t(T num)
+    inline explicit mont_t(uint32_t num)
     {
         #pragma unroll
         for(int i = 0; i < n; i++)
@@ -433,19 +437,7 @@ public:
     // raise to a variable power, variable in respect to threadIdx,
     // but mind the ^ operator's precedence!
     inline mont_t& operator^=(uint32_t p)
-    {
-        mont_t sqr = *this;
-        *this = csel(*this, one(), p&1);
-
-        #pragma unroll 1
-        while (p >>= 1) {
-            sqr.sqr();
-            if (p&1)
-                *this *= sqr;
-        }
-
-        return *this;
-    }
+    {   return pow_byref(*this, p);   }
     friend inline mont_t operator^(mont_t a, uint32_t p)
     {   return a ^= p;   }
     inline mont_t operator()(uint32_t p)
@@ -453,25 +445,7 @@ public:
 
     // raise to a constant power, e.g. x^7, to be unrolled at compile time
     inline mont_t& operator^=(int p)
-    {
-        if (p < 2)
-            asm("trap;");
-
-        mont_t sqr = *this;
-        if ((p&1) == 0) {
-            do {
-                sqr.sqr();
-                p >>= 1;
-            } while ((p&1) == 0);
-            *this = sqr;
-        }
-        for (p >>= 1; p; p >>= 1) {
-            sqr.sqr();
-            if (p&1)
-                *this *= sqr;
-        }
-        return *this;
-    }
+    {   return pow_byref(*this, p);   }
     friend inline mont_t operator^(mont_t a, int p)
     {   return p == 2 ? (mont_t)wide_t{a} : a ^= p;   }
     inline mont_t operator()(int p)
@@ -1147,6 +1121,19 @@ public:
             even[i] = __shfl_xor_sync(0xFFFFFFFF, even[i], laneMask);
     }
 };
+}
+
+template<typename T>
+__device__ static void print_num(T num)
+{
+    num.from();
+    printf("0x");
+    for (int i = num.n-1; i >= 0; i--)
+        printf("%x", num[i]);
+    printf("\n");
+    num.to();
+}
 
 # undef inline
 # undef asm
+#endif
