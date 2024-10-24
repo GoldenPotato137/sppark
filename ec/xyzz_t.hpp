@@ -77,7 +77,7 @@ namespace device
 
             __device__ affine_t(const field_t &x, const field_t &y) : X(x), Y(y) {}
 
-            inline __device__ affine_t() {}
+            inline __host__ __device__ affine_t() {}
 
             inline __device__ affine_t(const xyzz_t &a)
             {

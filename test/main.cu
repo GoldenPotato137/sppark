@@ -8,6 +8,7 @@
 
 #include <ec/jacobian_t.hpp>
 #include <ec/xyzz_t.hpp>
+#include "util/exception.cuh"
 
 typedef jacobian_t<device::fp_t> point_t;
 typedef device::xyzz_t<device::fp_t> bucket_t;
@@ -42,9 +43,13 @@ __global__ void test(device::fp_t &num, bucket_t &point)
     point = take(point, tmp);
 }
 
+const int S = 10;
+
 int main()
 {
-    auto tmp = host::fp_t(10);
+    auto tmp = host::fr_t(10);
+    tmp <<= S;
+    affine_t_host tt;
 //    std::cout << tmp << std::endl;
 
     auto g = affine_t_host(host::fp_t(1), host::fp_t(2));
