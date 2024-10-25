@@ -310,11 +310,11 @@ class blst_256_t {
     vec256 val;
 
     inline operator const limb_t*() const           { return val;    }
-    inline operator limb_t*()                       { return val;    }
 
     inline const limb_t& operator[](size_t i) const { return val[i]; }
 
 public:
+    inline operator limb_t*()                       { return val;    }
     static const size_t n = sizeof(vec256)/sizeof(limb_t);
     inline limb_t& operator[](size_t i)             { return val[i]; }
     static const size_t nbits = N;

@@ -702,34 +702,54 @@ namespace host
 } // namespace host
 
 
-//typedef device::fp_t field;
-//typedef device::xyzz_t<device::fp_t> group;
-template<typename group, typename field>
-__host__ __device__ group take(group point, field scalar)
+namespace host
 {
-    scalar.from();
-    group result;
-    result.inf();
-    for (int i = scalar.n - 1; i >= 0; i--)
+    template<typename group, typename field>
+    group take(group point, field scalar)
     {
-#ifdef __CUDA_ARCH__
-        uint32_t tmp = scalar[i];
-        static const int bits = 32 - 1;
-#else
-        uint64_t tmp = scalar[i];
-        static const int bits = 64 - 1;
-#endif
-        for (auto j = bits; j >= 0; j--)
+        scalar.from();
+        group result;
+        result.inf();
+        for (int i = scalar.n - 1; i >= 0; i--)
         {
-            result.uadd(result);
-            if (tmp & (1ull << j))
+            uint64_t tmp = scalar[i];
+            for (auto j = 63; j >= 0; j--)
             {
+                result.uadd(result);
+                if (tmp & (1ull << j))
+                {
 //                printf("add at int.no: %d, bit: %d\n", i, j);
-                result.uadd(point);
+                    result.uadd(point);
+                }
             }
         }
+        return result;
     }
-    return result;
+}
+
+namespace device
+{
+    template<typename group, typename field>
+    __device__ group take(group point, field scalar)
+    {
+        scalar.from();
+        group result;
+        result.inf();
+        for (int i = scalar.n - 1; i >= 0; i--)
+        {
+            uint32_t tmp = scalar[i];
+            for (auto j = 31; j >= 0; j--)
+            {
+                result.uadd(result);
+                if (tmp & (1ull << j))
+                {
+//                printf("add at int.no: %d, bit: %d\n", i, j);
+                    result.uadd(point);
+                }
+            }
+        }
+        return result;
+    }
 }
 
 # pragma nv_diag_default 284

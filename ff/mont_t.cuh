@@ -1124,16 +1124,35 @@ public:
 };
 }
 
-template<typename T>
-__device__ static void print_num(T num)
+namespace device
 {
-    num.from();
-    printf("0x");
-    for (int i = num.n-1; i >= 0; i--)
-        printf("%x", num[i]);
-    printf("\n");
-    num.to();
+    template<typename T>
+    __device__ static void print_num(T num)
+    {
+        num.from();
+        printf("0x");
+        for (int i = num.n-1; i >= 0; i--)
+            printf("%x", num[i]);
+        printf("\n");
+        num.to();
+    }
 }
+
+namespace host
+{
+    template<typename T>
+    __host__ static void print_num(T num)
+    {
+        num.from();
+        printf("0x");
+        for (int i = num.n-1; i >= 0; i--)
+            printf("%llx", num[i]);
+        printf("\n");
+        num.to();
+    }
+}
+
+
 
 # undef inline
 # undef asm

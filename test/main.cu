@@ -70,7 +70,10 @@ int main()
 
     memcpy(&g_xyz, t_point, sizeof (g_xyz));
     g2 = (affine_t_host)g_xyz;
-    std::cout << g2.X << std::endl << g2.Y << std::endl;
+//    std::cout << g2.X << std::endl << g2.Y << std::endl;
+    host::print_num(g2.X);
+    host::print_num(g2.Y);
+
 
     for(auto i = 0; i < tmp2->n; i++)
         printf("%u ", (*tmp2)[i]);
