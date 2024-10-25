@@ -5,8 +5,13 @@
 #ifndef __SPPARK_FF_ALT_BN128_HPP__
 #define __SPPARK_FF_ALT_BN128_HPP__
 
-#include <cstdint>
+# include <cstdint>
 # include "mont_t.cuh"
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsubobject-linkage"
+#endif
 
 namespace device
 {
@@ -83,11 +88,6 @@ namespace device
 
 // host-side field types
 # include <blst_t.hpp>
-
-# if defined(__GNUC__) && !defined(__clang__)
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wsubobject-linkage"
-# endif
 
 namespace host
 {
