@@ -178,7 +178,6 @@ namespace device
 
         inline __device__ operator affine_t() const
         {
-                   printf("hello world\n");
             return affine_t(*this);
         }
 
@@ -489,6 +488,11 @@ namespace host
                 p.Y = Y;
                 p.ZZZ = p.ZZ = field_t::one(is_inf());
                 return p;
+            }
+
+            friend bool operator == (const affine_t &lhs,const affine_t &rhs)
+            {
+                return lhs.X == rhs.X && lhs.Y == rhs.Y;
             }
 
             using mem_t = affine_t;

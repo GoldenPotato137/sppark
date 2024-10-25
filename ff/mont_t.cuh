@@ -7,6 +7,7 @@
 
 # include <cstddef>
 # include <cstdint>
+# include <cstdio>
 # include "pow.hpp"
 
 # define inline __device__ __forceinline__
@@ -203,7 +204,7 @@ public:
     inline const uint32_t& operator[](size_t i) const   { return even[i]; }
     inline size_t len() const                           { return n;       }
 
-    inline mont_t() {}
+    inline __host__ mont_t() {}
     inline mont_t(const uint32_t *p)
     {
         for (size_t i = 0; i < n; i++)

@@ -31,25 +31,22 @@ __global__ void test(device::fp_t &num, bucket_t &point)
     auto tmp = fp_t::one();
     tmp = tmp + fp_t(5);
 //    tmp = tmp ^ 3;
-    print_num(tmp);
 
     num += tmp;
     print_num(num);
     num.from();
 
-//    affine_t t_point = affine_t (fp_t(1), fp_t(2));
-//    point.uadd(t_point);
-//    point.uadd(t_point);
-    point = take(point, tmp);
+    affine_t t_point = affine_t (fp_t(1), fp_t(2));
+//    point = bucket_t (t_point);
+    point.add(t_point);
+    point.add(t_point);
+//    point = take(point, tmp);
 }
-
-const int S = 10;
 
 int main()
 {
-    auto tmp = host::fr_t(10);
-    tmp <<= S;
-    affine_t_host tt;
+    auto tmp = host::fp_t(10);
+//    tmp <<= S;
 //    std::cout << tmp << std::endl;
 
     auto g = affine_t_host(host::fp_t(1), host::fp_t(2));
@@ -77,6 +74,15 @@ int main()
 
     for(auto i = 0; i < tmp2->n; i++)
         printf("%u ", (*tmp2)[i]);
+
+
+    // host::xyzz::affine_t operator == test
+    {
+        affine_t_host point1 = affine_t_host (host::fp_t(1), host::fp_t(2));
+        affine_t_host point2 = affine_t_host (host::fp_t(1114514), host::fp_t(2));
+        assert(!(point1 == point2));
+        assert(point1 == point1);
+    }
 
     return 0;
 }

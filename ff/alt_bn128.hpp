@@ -73,7 +73,9 @@ namespace device
     {
         using mem_t = fr_t;
 
-        __device__ __forceinline__ fr_t() {}
+        __host__ __device__ __forceinline__ fr_t() {}
+
+        __device__ __forceinline__ fr_t(const uint32_t &a) : fr_mont(a){}
 
         __device__ __forceinline__ fr_t(const fr_mont &a) : fr_mont(a) {}
     };
