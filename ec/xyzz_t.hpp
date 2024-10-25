@@ -492,7 +492,13 @@ namespace host
 
             friend bool operator == (const affine_t &lhs,const affine_t &rhs)
             {
-                return lhs.X == rhs.X && lhs.Y == rhs.Y;
+                for(auto i = 0; i < lhs.X.n; i++)
+                    if (lhs.X[i] != rhs.X[i])
+                        return false;
+                for(auto i = 0; i < lhs.X.n; i++)
+                    if (lhs.Y[i] != rhs.Y[i])
+                        return false;
+                return true;
             }
 
             using mem_t = affine_t;
