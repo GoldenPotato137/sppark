@@ -17,14 +17,6 @@ typedef bucket_t::affine_t affine_t;
 typedef bucket_t_host::affine_t affine_t_host;
 typedef device::fr_t scalar_t;
 
-//#include <msm/pippenger.cuh>
-//
-//RustError mult_pippenger(point_t* out, const affine_t points[], size_t npoints,
-//                         const scalar_t scalars[])
-//{
-//    return mult_pippenger<bucket_t>(out, points, npoints, scalars, false);
-//}
-
 __global__ void test(device::fp_t &num, bucket_t &point)
 {
     using namespace device;
@@ -43,6 +35,13 @@ __global__ void test(device::fp_t &num, bucket_t &point)
 //    point = take(point, tmp);
 }
 
+void check_affine(affine_t_host affine, uint64_t x_small)
+{
+    affine.X.from();
+    assert(x_small == affine.X[0]);
+    affine.X.to();
+}
+
 int main()
 {
     auto tmp = host::fp_t(10);
@@ -50,15 +49,11 @@ int main()
 //    std::cout << tmp << std::endl;
 
     auto g = affine_t_host(host::fp_t(1), host::fp_t(2));
-//    std::cout << g.X << std::endl << g.Y << std::endl;
     auto g_xyz = bucket_t_host(g);
-//    g_xyz = take(g_xyz, tmp);
-//    std:: cout << g_xyz.X << std::endl << g_xyz.Y << std::endl << g_xyz.ZZ << std::endl << g_xyz.ZZZ << std::endl;
-//    g_xyz.add(g);
+    g_xyz = host::take(g_xyz, host::fr_t(2));
     auto g2 = (affine_t_host)g_xyz;
-//    std::cout << g2.X << std::endl << g2.Y << std::endl;
+    check_affine(g2, 0xd3c208c16d87cfd3);
 
-//    printf("%lu %lu\n", sizeof(device::fp_t), sizeof(host::fp_t));
     device::fp_t* tmp2;
     bucket_t* t_point;
     CUDA_OK(cudaMallocManaged(&tmp2, sizeof (device::fp_t)));
@@ -85,6 +80,22 @@ int main()
         affine_t_host point2 = affine_t_host (host::fp_t(1114514), host::fp_t(2));
         assert(!(point1 == point2));
         assert(point1 == point1);
+    }
+
+    // host::xyzz::affine_t operator + / += / * / *= test
+    {
+        auto g5_xyzz = bucket_t_host(g) * host::fr_t(5);
+        check_affine(affine_t_host(g5_xyzz), 0xe849a8a7fa163fa9);
+        auto g5 = g * host::fr_t(5);
+        assert(g5 == affine_t_host(g5_xyzz));
+
+        auto g10 = g5 + g5;
+        check_affine(g10, 0xc6951d924b4045b4);
+        check_affine(g10 + g5 * host::fr_t(114514), 0x9bed052c7cf50040); // 572580 * g
+
+        auto g15 = g10;
+        g15 += g5;
+        check_affine(g15, 0xb05dcd507457f63c);
     }
 
     return 0;

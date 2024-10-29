@@ -501,6 +501,36 @@ namespace host
                 return true;
             }
 
+            inline affine_t &operator+=(const affine_t &other)
+            {
+                auto tmp = xyzz_t(*this);
+                tmp.uadd(other);
+                *this = affine_t(tmp);
+                return *this;
+            }
+
+            inline affine_t operator+(const affine_t& other) const
+            {
+                affine_t result = *this;
+                result += other;
+                return result;
+            }
+
+            template <typename field>
+            inline affine_t &operator*=(const field &other)
+            {
+                *this = take(xyzz_t(*this), other);
+                return *this;
+            }
+
+            template <typename field>
+            inline affine_t operator*(const field &other) const
+            {
+                affine_t result = *this;
+                result *= other;
+                return result;
+            }
+
             using mem_t = affine_t;
         };
 
@@ -703,6 +733,33 @@ namespace host
 
         inline void uadd(const affine_t &p2, bool subtract = false) { add(p2, subtract); }
 
+        inline xyzz_t &operator+=(const xyzz_t &other)
+        {
+            this->uadd(other);
+            return *this;
+        }
+
+        inline xyzz_t operator+(const xyzz_t& other) const
+        {
+            xyzz_t result = *this;
+            result += other;
+            return result;
+        }
+
+        template <typename field>
+        inline xyzz_t &operator*=(const field &other)
+        {
+            *this = take(*this, other);
+            return *this;
+        }
+
+        template <typename field>
+        inline xyzz_t operator*(const field &other) const
+        {
+            xyzz_t result = *this;
+            result *= other;
+            return result;
+        }
     };
 
 } // namespace host
