@@ -13,6 +13,8 @@
 #pragma GCC diagnostic ignored "-Wsubobject-linkage"
 #endif
 
+# pragma nv_diag_suppress 20012
+
 namespace device
 {
 #define TO_CUDA_T(limb64) (uint32_t)(limb64), (uint32_t)(limb64>>32)
@@ -143,5 +145,6 @@ namespace host
 # if defined(__GNUC__) && !defined(__clang__)
 #  pragma GCC diagnostic pop
 # endif
+# pragma nv_diag_default 20012
 
 #endif
