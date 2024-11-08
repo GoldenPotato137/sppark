@@ -604,6 +604,8 @@ public:
     {   return !vec_is_equal(a, b, sizeof(vec256));   }
 
 # if defined(_GLIBCXX_IOSTREAM) || defined(_IOSTREAM_) // non-standard
+#include <iostream>
+
     friend std::ostream& operator<<(std::ostream& os, const blst_256_t& obj)
     {
         unsigned char be[sizeof(obj)];
