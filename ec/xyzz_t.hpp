@@ -81,18 +81,16 @@ namespace device
 
             inline __device__ affine_t(const xyzz_t &a)
             {
-                printf("123\n");
-                print_num(a.X);
-                print_num(a.Y);
-                print_num(a.ZZ);
-                print_num(a.ZZZ);
+                // printf("\n123 %u\n", threadIdx.x);
+                // print_num(a.X);
+                // print_num(a.Y);
+                // print_num(a.ZZ);
+                // print_num(a.ZZZ);
                 Y = 1 / a.ZZZ;
-                print_num(Y);
                 X = Y * a.ZZ;   // 1/Z
                 X = X ^ 2;        // 1/Z^2
                 X *= a.X;       // X/Z^2
                 Y *= a.Y;       // Y/Z^3
-                print_num(Y);
             }
 
             inline __device__ bool is_inf() const { return (bool) (X.is_zero(Y)); }

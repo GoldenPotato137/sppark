@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.27)
 
-project(sppark CUDA C ASM)
-
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_ARCHITECTURES 75)
+
+project(sppark CUDA C ASM)
+
 
 include_directories(./ depends/blst/src)
 

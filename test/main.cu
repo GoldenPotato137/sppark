@@ -26,13 +26,36 @@ __global__ void test(device::fp_t &num, bucket_t &point)
 
     num += tmp;
     print_num(num);
-    num.from();
 
     affine_t t_point = affine_t (fp_t(1), fp_t(2));
-//    point = bucket_t (t_point);
     point.add(t_point);
     point.add(t_point);
-//    point = take(point, tmp);
+}
+
+__global__ void test_div(int n, scalar_t *output)
+{
+    auto id = (threadIdx.x + blockIdx.x * blockDim.x) / 2;
+    if (id >= n)
+        return;
+
+    auto tmp = scalar_t((id + 1) * 3) / scalar_t(3);
+    if (threadIdx.x % 2 == 0)
+        output[id] = tmp;
+}
+
+__global__ void test_xyzz_to_affine(int n, affine_t* result)
+{
+    auto id = (threadIdx.x + blockIdx.x * blockDim.x) / 2;
+    if (id >= n)
+        return;
+
+    auto base = affine_t(device::fp_t(1), device::fp_t(2));
+    auto point = bucket_t(base);
+    point = take(point, scalar_t(id + 1));
+
+    auto tmp = affine_t(point);
+    if (threadIdx.x % 2 == 0)
+        result[id] = tmp;
 }
 
 void check_affine(affine_t_host affine, uint64_t x_small)
@@ -40,6 +63,14 @@ void check_affine(affine_t_host affine, uint64_t x_small)
     affine.X.from();
     assert(x_small == affine.X[0]);
     affine.X.to();
+}
+
+template<typename HOST_T, typename DEVICE_T>
+static HOST_T DtoH(const DEVICE_T &device)
+{
+    HOST_T result;
+    memcpy(&result, &device, sizeof(HOST_T));
+    return result;
 }
 
 int main()
@@ -68,10 +99,7 @@ int main()
 //    std::cout << g2.X << std::endl << g2.Y << std::endl;
     host::print_num(g2.X);
     host::print_num(g2.Y);
-
-
-    for(auto i = 0; i < tmp2->n; i++)
-        printf("%u ", (*tmp2)[i]);
+    host::print_num(DtoH<host::fp_t>(*tmp2));
 
 
     // host::xyzz::affine_t operator == test
@@ -96,6 +124,50 @@ int main()
         auto g15 = g10;
         g15 += g5;
         check_affine(g15, 0xb05dcd507457f63c);
+    }
+
+    // div test
+    {
+        scalar_t *output;
+        int n = 79;
+        static constexpr int block_size = 32;
+        int block_num = (n * 2 + block_size - 1) / block_size;
+        CUDA_OK(cudaMallocManaged(&output, n * sizeof (scalar_t)));
+        test_div<<<block_num, block_size>>>(n, output);
+        cudaDeviceSynchronize();
+        for(auto i = 0; i < n; i++)
+            assert(DtoH<host::fr_t>(output[i]) == host::fr_t(i+1));
+        // std::cout << std::endl;
+        // for (auto i = 0; i < n; i++)
+        //     std::cout << DtoH<host::fr_t>(output[i]) << std::endl;
+        // std::cout << std::endl;
+        CUDA_OK(cudaFree(output));
+    }
+
+    // xyzz and affine convention test
+    {
+        affine_t *output;
+        int n = 10;
+        static constexpr int block_size = 32;
+        int block_num = (n * 2 + block_size - 1) / block_size;
+        CUDA_OK(cudaMallocManaged(&output, n * sizeof (affine_t)));
+        test_xyzz_to_affine<<<block_num, block_size>>>(n, output);
+        cudaDeviceSynchronize();
+
+        for (auto i = 0; i < n; i++)
+        {
+            auto target = affine_t_host(host::fp_t(1), host::fp_t(2)) * host::fp_t(i + 1);
+            assert(DtoH<affine_t_host>(output[i]).X == target.X);
+        }
+        // for (auto i = 0; i < n; i++)
+        // {
+        //     printf("point: %dg\n", i+1);
+        //     auto tmp = DtoH<affine_t_host>(output[i]);
+        //     print_num(tmp.X);
+        //     print_num(tmp.Y);
+        // }
+
+        CUDA_OK(cudaFree(output));
     }
 
     return 0;
