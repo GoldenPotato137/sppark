@@ -594,15 +594,14 @@ public:
     inline blst_256_t& operator/=(const blst_256_t& a)
     {   return *this *= a.reciprocal();   }
 
-#ifndef NDEBUG
-    inline blst_256_t(const char *hexascii)
-    {   limbs_from_hexascii(val, sizeof(val), hexascii); to();   }
-
     friend inline bool operator==(const blst_256_t& a, const blst_256_t& b)
     {   return vec_is_equal(a, b, sizeof(vec256));   }
     friend inline bool operator!=(const blst_256_t& a, const blst_256_t& b)
     {   return !vec_is_equal(a, b, sizeof(vec256));   }
 
+#ifndef NDEBUG
+    inline blst_256_t(const char *hexascii)
+    {   limbs_from_hexascii(val, sizeof(val), hexascii); to();   }
 # if defined(_GLIBCXX_IOSTREAM) || defined(_IOSTREAM_) // non-standard
 #include <iostream>
 
