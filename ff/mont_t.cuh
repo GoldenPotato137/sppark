@@ -48,6 +48,7 @@ public:
 private:
     uint32_t even[n];
 
+    // a[] x b => acc
     static inline void mul_n(uint32_t* acc, const uint32_t* a, uint32_t bi,
                              size_t tn=n)
     {
@@ -57,6 +58,7 @@ private:
                 : "r"(a[j]), "r"(bi));
     }
 
+    // a[] x b + acc => acc
     static inline void cmad_n(uint32_t* acc, const uint32_t* a, uint32_t bi,
                               size_t tn=n)
     {
@@ -70,6 +72,7 @@ private:
         // return carry flag
     }
 
+    // acc + a[] => acc
     static inline void cadd_n(uint32_t* acc, const uint32_t* a, size_t tn=n)
     {
         asm("add.cc.u32 %0, %0, %1;" : "+r"(acc[0]) : "r"(a[0]));
