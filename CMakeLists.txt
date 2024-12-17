@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 set(CMAKE_CUDA_STANDARD 20)
-set(CMAKE_CUDA_ARCHITECTURES 70 75)
+set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86 87 89)
 
 project(sppark CUDA C ASM)
 
