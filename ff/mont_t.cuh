@@ -9,7 +9,8 @@
 # include <cstdint>
 # include <cstdio>
 # include "pow.hpp"
-
+#include "tensor.cuh"
+#include "ff_sppark.cuh"
 # define inline __device__ __forceinline__
 # ifdef __GNUC__
 #  define asm __asm__ __volatile__
@@ -34,7 +35,8 @@
 namespace device{
 template<const size_t N, const uint32_t MOD[(N+31)/32], const uint32_t& M0,
          const uint32_t RR[(N+31)/32], const uint32_t ONE[(N+31)/32],
-         const uint32_t MODx[(N+31)/32] = MOD>
+         const uint32_t MODx[(N+31)/32] = MOD,
+         const uint32_t MODN[(N+31)/32] = MOD>
 class __align__(((N+63)/64)&1 ? 8 : 16) mont_t {
 public:
     static const size_t nbits = N;
@@ -43,6 +45,9 @@ public:
     using mem_t = mont_t;
     static const size_t n = (N+31)/32;
 
+public:
+    static __device__ const uint32_t* get_MOD() { return MOD; }
+    static __device__ const uint32_t* get_MODN() { return MODN; }
     operator uint32_t*()                         { return even;    }
 
 private:
@@ -1138,6 +1143,236 @@ namespace device
             printf("%x", num[i]);
         printf("\n");
         num.to();
+    }
+
+    template <typename mont_t>
+    __device__ static void mult_base(const mont_t &a, const mont_t &b, mont_t &result)
+    {
+        const uint32_t *MOD = mont_t::get_MOD();
+        const uint32_t *MODN = mont_t::get_MODN();
+        static const size_t s = (254 + 31) / 32;
+
+        uint32_t t[2 * s] = {0};
+        uint32_t m[s] = {0};
+
+        // 1. t = a * b
+        for (size_t i = 0; i < s; i++)
+        {
+            uint32_t C = 0;
+            for (size_t j = 0; j < s; j++)
+            {
+                uint64_t temp = (uint64_t)t[i + j] + (uint64_t)a[j] * b[i] + C;
+                t[i + j] = (uint32_t)temp;
+                C = (uint32_t)(temp >> 32);
+            }
+            t[i + s] = C;
+        }
+
+        // 2. m = ((T % R) * N') % R
+        for (size_t i = 0; i < s; i++)
+        {
+            uint32_t C = 0;
+            for (size_t j = 0; j < s - i; j++)
+            {
+                uint64_t temp = (uint64_t)m[i + j] + (uint64_t)t[i] * MODN[j] + C;
+                m[i + j] = (uint32_t)temp;
+                C = (uint32_t)(temp >> 32);
+            }
+        }
+
+        // 3. t += m * N
+        for (size_t i = 0; i < s; i++)
+        {
+            uint32_t C = 0;
+            for (size_t j = 0; j < s; j++)
+            {
+                uint64_t temp = (uint64_t)t[i + j] + (uint64_t)m[i] * MOD[j] + C;
+                t[i + j] = (uint32_t)temp;
+                C = (uint32_t)(temp >> 32);
+            }
+            // ADD (t[i+s], C)
+            uint64_t sum = (uint64_t)t[i + s] + C;
+            t[i + s] = (uint32_t)sum;
+            // 处理可能的高位进位
+            if (sum >> 32 && i + s + 1 < 2 * s)
+                t[i + s + 1] += 1;
+        }
+
+        for (size_t i = 0; i < s; i++)
+        {
+            result[i] = t[s + i];
+        }
+
+        // 5. 最后的条件减法：如果结果 >= MOD，则减去MOD
+        uint32_t greater_or_equal = 1;
+        for (int i = s - 1; i >= 0; i--)
+        {
+            if (result[i] < MOD[i])
+            {
+                greater_or_equal = 0;
+                break;
+            }
+            else if (result[i] > MOD[i])
+            {
+                break;
+            }
+        }
+
+        if (greater_or_equal)
+        {
+            uint32_t borrow = 0;
+            for (size_t i = 0; i < s; i++)
+            {
+                uint64_t diff = (uint64_t)result[i] - MOD[i] - borrow;
+                result[i] = (uint32_t)diff;
+                borrow = (diff >> 32) & 1;
+            }
+        }
+    }
+
+    template <typename mont_t>
+    __device__ static void montgomery_mult_coop_kernel(
+        mont_t *a_shared,
+        mont_t *b_shared,
+        mont_t *result_shared,
+        size_t n)
+    {
+        extern __shared__ uint32_t shared_data[];
+        const uint32_t s = 8;
+        const uint32_t s2 = 16;
+        uint32_t *shared_MOD = shared_data;
+        uint32_t *shared_MODN = shared_MOD + s;
+        uint32_t *shared_m_pool = shared_MODN + s;
+        uint32_t *shared_mMOD_results = shared_m_pool + blockDim.x * s;
+
+        uint32_t tid = threadIdx.x;
+        uint32_t block_dim =  blockDim.x;
+
+#pragma unroll
+        if (tid == 0)
+        {
+            const uint32_t *MOD_ptr = mont_t::get_MOD();
+            const uint32_t *MODN_ptr = mont_t::get_MODN();
+            for (int i = 0; i < s; ++i)
+            {
+                shared_MOD[i] = MOD_ptr[i];
+                shared_MODN[i] = MODN_ptr[i];
+            }
+        }
+        __syncthreads();
+
+        if (tid < n)
+        {
+            uint32_t local_t[s2] = {0};
+            uint32_t local_m[s] = {0};
+            uint32_t local_a[s];
+            uint32_t local_b[s];
+            uint32_t local_result[s];
+
+#pragma unroll
+            for (int i = 0; i < s; ++i)
+            {
+                local_a[i] = a_shared[tid][i];
+                local_b[i] = b_shared[tid][i];
+            }
+
+            for (size_t i = 0; i < s; i++)
+            {
+                uint32_t C = 0;
+                uint64_t b_i = local_b[i];
+                for (size_t j = 0; j < s; j++)
+                {
+                    uint64_t temp = local_t[i + j] + (uint64_t)local_a[j] * b_i + C;
+                    local_t[i + j] = (uint32_t)temp;
+                    C = (uint32_t)(temp >> 32);
+                }
+                if (i + s < s2)
+                {
+                    local_t[i + s] = C;
+                }
+            }
+
+            for (size_t i = 0; i < s; i++)
+            {
+                uint32_t C = 0;
+                uint64_t t_i = local_t[i];
+                for (size_t j = 0; (i + j) < s; j++)
+                {
+                    uint64_t temp = (uint64_t)local_m[i + j] + t_i * shared_MODN[j] + C;
+                    local_m[i + j] = (uint32_t)temp;
+                    C = (uint32_t)(temp >> 32);
+                }
+            }
+
+            uint32_t *my_shared_m_location = shared_m_pool + tid * s;
+#pragma unroll
+            for (int i = 0; i < s; ++i)
+            {
+                my_shared_m_location[i] = local_m[i];
+            }
+
+            // tensor_mont::tensor_calc_kernel(
+            //     shared_m_pool,
+            //     shared_MOD,
+            //     shared_mMOD_results,
+            //     block_dim);
+
+            ff_sppark::ff_sppark_calc_kernel(
+                shared_m_pool,
+                shared_MOD,
+                shared_mMOD_results,
+                block_dim);
+
+            uint32_t *my_mMOD_result_location = shared_mMOD_results + tid * s2;
+            uint32_t C_add = 0;
+#pragma unroll
+            for (size_t i = 0; i < s2; ++i)
+            {
+                uint64_t temp = (uint64_t)local_t[i] + my_mMOD_result_location[i] + C_add;
+                local_t[i] = (uint32_t)temp;
+                C_add = (uint32_t)(temp >> 32);
+            }
+
+#pragma unroll
+            for (size_t i = 0; i < s; i++)
+            {
+                local_result[i] = local_t[s + i];
+            }
+
+            uint32_t greater_or_equal = 1;
+#pragma unroll
+            for (int i = s - 1; i >= 0; i--)
+            {
+                if (local_result[i] < shared_MOD[i])
+                {
+                    greater_or_equal = 0;
+                    break;
+                }
+                else if (local_result[i] > shared_MOD[i])
+                {
+                    greater_or_equal = 1;
+                    break;
+                }
+            }
+
+            if (greater_or_equal)
+            {
+                uint32_t borrow = 0;
+#pragma unroll
+                for (size_t i = 0; i < s; i++)
+                {
+                    uint64_t diff = (uint64_t)local_result[i] - shared_MOD[i] - borrow;
+                    local_result[i] = (uint32_t)diff;
+                    borrow = (diff >> 32) & 1ULL ? 1 : 0;
+                }
+            }
+
+#pragma unroll
+            for (int i = 0; i < s; ++i)
+            {
+                result_shared[tid][i] = local_result[i];
+            }
+        }
     }
 }
 
