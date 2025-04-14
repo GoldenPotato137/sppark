@@ -16,6 +16,13 @@
 # pragma nv_diag_suppress 284   // NULL reference is not allowed
 
 #include "../ff/mont_t.cuh"
+#include "gmp.h"
+#include "../ff/mont_t.cuh"
+#include "../../cgbn/cgbn.h"
+#define TPI 1
+typedef cgbn_context_t<TPI> context_t;
+typedef cgbn_env_t<context_t, 256> env256_t;
+
 namespace device
 {
 
@@ -225,6 +232,334 @@ namespace device
                 asm("prefetch.global.L2 [%0];"::"l"(p + i));
         }
 
+
+        __device__ void cadd_a(const affine_t &p2)
+        {
+            field_t P, R;
+
+            R = p2.Y * ZZZ; /* S2 = Y2*ZZZ1 */
+            R -= Y;         /* R = S2-Y1 */
+            P = p2.X * ZZ;  /* U2 = X2*ZZ1 */
+            P -= X;         /* P = U2-X1 */
+
+            field_t PP; /* add |p2| to |p1| */
+
+            PP = P ^ 2; /* PP = P^2 */
+#define PPP P
+            PPP = P * PP; /* PPP = P*PP */
+            ZZ *= PP;     /* ZZ3 = ZZ1*PP */
+            ZZZ *= PPP;   /* ZZZ3 = ZZZ1*PPP */
+#define Q PP
+            Q = PP * X; /* Q = X1*PP */
+            X = R ^ 2;  /* R^2 */
+            X -= PPP;   /* R^2-PPP */
+            X -= Q;
+            X -= Q; /* X3 = R^2-PPP-2*Q */
+            Q -= X;
+            Q *= R;    /* R*(Q-X3) */
+            Y *= PPP;  /* Y1*PPP */
+            Y = Q - Y; /* Y3 = R*(Q-X3)-Y1*PPP */
+        }
+
+        template <typename env256_t, typename cgbn_t>
+        __device__ void cgbn_mont(env256_t bn256_env, const field_t *aa, const field_t *bb, field_t *cc)
+        {
+            cgbn_mem_t<256> ins_a;
+            cgbn_mem_t<256> ins_b;
+            cgbn_mem_t<256> ins_r;
+            cgbn_mem_t<256> ins_m;
+
+            const uint32_t *MOD = device::fp_t::get_MOD();
+            const uint32_t M0 = device::fp_t::get_M0();
+            cgbn_t a, b, r, m; // three 1024-bit values (spread across a warp)
+
+            for (int i = 0; i < 8; i++)
+            {
+                ins_a._limbs[i] = (*aa)[i];
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                ins_b._limbs[i] = (*bb)[i];
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                ins_m._limbs[i] = MOD[i];
+            }
+
+            // load a and b from global memory
+            bn256_env.load(a, &ins_a);
+            bn256_env.load(b, &ins_b);
+            bn256_env.load(m, &ins_m);
+
+            cgbn_mont_mul(bn256_env, r, a, b, m, M0);
+
+            bn256_env.store(&ins_r, r);
+
+            for (int i = 0; i < 8; i++)
+            {
+                cc[i] = ins_r._limbs[i];
+            }
+        }
+
+        __device__ void cgbn_add_a(const affine_t &p2)
+        {
+            context_t bn_context;
+            env256_t bn256_env(bn_context);
+
+            field_t P, R;
+
+            // R = p2.Y * ZZZ; /* S2 = Y2*ZZZ1 */
+            cgbn_mont<env256_t, env256_t::cgbn_t>(bn256_env, &ZZZ, &p2.Y, &R);
+            R -= Y;        /* R = S2-Y1 */
+            P = p2.X * ZZ; /* U2 = X2*ZZ1 */
+            // cgbn_mont<env256_t,env256_t::cgbn_t>(bn256_env,bn256_env,&ZZ, &p2.X,  &P);
+            P -= X; /* P = U2-X1 */
+
+            field_t PP; /* add |p2| to |p1| */
+
+            // PP = P ^ 2; /* PP = P^2 */
+            cgbn_mont<env256_t, env256_t::cgbn_t>(bn256_env, &P, &P, &PP);
+
+#define PPP P
+            // PPP = P * PP; /* PPP = P*PP */
+            cgbn_mont<env256_t, env256_t::cgbn_t>(bn256_env, &P, &PP, &PPP);
+            ZZ *= PP; /* ZZ3 = ZZ1*PP */
+            // cgbn_mont<env256_t, env256_t::cgbn_t>(bn256_env, &ZZ, &PP, &ZZ);
+            ZZZ *= PPP; /* ZZZ3 = ZZZ1*PPP */
+            // cgbn_mont<env256_t, env256_t::cgbn_t>(bn256_env, &ZZZ, &PPP, &ZZZ);
+#define Q PP
+            Q = PP * X; /* Q = X1*PP */
+            // cgbn_mont<env256_t,env256_t::cgbn_t>(bn256_env,&PP, &X, &Q);
+            X = R ^ 2; /* R^2 */
+            // cgbn_mont<env256_t,env256_t::cgbn_t>(bn256_env,&R, &R, &X);
+            X -= PPP; /* R^2-PPP */
+            X -= Q;
+            X -= Q; /* X3 = R^2-PPP-2*Q */
+            Q -= X;
+            // Q *= R;    /* R*(Q-X3) */
+            // cgbn_mont<env256_t,env256_t::cgbn_t>(bn256_env,&R, &Q, &Q);
+            Y *= PPP; /* Y1*PPP */
+            // cgbn_mont<env256_t,env256_t::cgbn_t>(bn256_env,&Y, &PPP, &Y);
+            Y = Q - Y; /* Y3 = R*(Q-X3)-Y1*PPP */
+        }
+
+        __device__ void mmadd_a(const affine_t &p2)
+        {
+            if (p2.is_inf())
+            {
+                return;
+            }
+            if (is_inf())
+            {
+                *this = p2;
+                return;
+            }
+            field_t P, R;
+            uint32_t tid = threadIdx.x;
+            uint32_t block_size = 256;
+            __shared__ field_t mult_a[256];
+            __shared__ field_t mult_b[256];
+            __shared__ field_t mult_results[256];
+            int mult_count = 0;
+            mult_a[tid + mult_count] = p2.Y; // p2.Y * ZZZ
+            mult_b[tid + mult_count] = ZZZ;
+            mult_count++;
+            // __syncthreads();
+            montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
+            // __syncthreads();
+            field_t temp1 = mult_results[tid]; // p2.Y * ZZZ
+            R = temp1 - Y;                     // delta_y = p2.Y * ZZZ - Y
+            // if(tid == 0 && blockIdx.x == 0){
+            //     field_t tttt = p2.Y * ZZZ; /* S2 = Y2*ZZZ1 */
+            //     printf("======\n");
+            //     print_num(tttt);
+            //     printf("======\n");
+            //     print_num(temp1);
+            // }
+            // mult_count = 0;
+            // mult_a[tid+ mult_count] = p2.X; // p2.X * ZZ
+            // mult_b[tid + mult_count] = ZZ;
+            // mult_count++;
+            // __syncthreads();
+            // montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
+            // __syncthreads();
+            // field_t temp2 = mult_results[tid]; // p2.X * ZZ
+            // P = temp2 - X;                   // delta_x = p2.X * ZZ - X
+
+            // R = p2.Y * ZZZ; /* S2 = Y2*ZZZ1 */
+            // R -= Y;         /* R = S2-Y1 */
+            P = p2.X * ZZ; /* U2 = X2*ZZ1 */
+            P -= X;        /* P = U2-X1 */
+
+            if (!P.is_zero())
+            {               /* X1!=X2 */
+                field_t PP; /* add |p2| to |p1| */
+
+                PP = P ^ 2; /* PP = P^2 */
+#define PPP P
+                PPP = P * PP; /* PPP = P*PP */
+                ZZ *= PP;     /* ZZ3 = ZZ1*PP */
+                ZZZ *= PPP;   /* ZZZ3 = ZZZ1*PPP */
+#define Q PP
+                Q = PP * X; /* Q = X1*PP */
+                X = R ^ 2;  /* R^2 */
+                X -= PPP;   /* R^2-PPP */
+                X -= Q;
+                X -= Q; /* X3 = R^2-PPP-2*Q */
+                Q -= X;
+                Q *= R;    /* R*(Q-X3) */
+                Y *= PPP;  /* Y1*PPP */
+                Y = Q - Y; /* Y3 = R*(Q-X3)-Y1*PPP */
+#undef Q
+#undef PPP
+            }
+            else if (R.is_zero())
+            {              /* X1==X2 && Y1==Y2 */
+                field_t M; /* double |p2| */
+
+#define U P
+                U = p2.Y + p2.Y; /* U = 2*Y1 */
+                ZZ = U ^ 2;      /* [ZZ3 =] V = U^2 */
+                ZZZ = ZZ * U;    /* [ZZZ3 =] W = U*V */
+#define S R
+                S = p2.X * ZZ; /* S = X1*V */
+                M = p2.X ^ 2;
+                M = M + M + M; /* M = 3*X1^2[+a] */
+                X = M ^ 2;
+                X -= S;
+                X -= S;         /* X3 = M^2-2*S */
+                Y = ZZZ * p2.Y; /* W*Y1 */
+                S -= X;
+                S *= M;    /* M*(S-X3) */
+                Y = S - Y; /* Y3 = M*(S-X3)-W*Y1 */
+#undef S
+#undef U
+            }
+            else
+            {          /* X1==X2 && Y1==-Y2 */
+                inf(); /* set |p3| to infinity */
+            }
+        }
+
+        __device__ void mmadd(const xyzz_t &p2)
+        {
+            if (p2.is_inf())
+            {
+                return;
+            }
+            else if (is_inf())
+            {
+                *this = p2;
+                return;
+            }
+
+            xyzz_t p31 = *this;
+            field_t U, S, P, R;
+
+            uint32_t tid = threadIdx.x;
+            uint32_t block_size = 256;
+            __shared__ field_t mult_a[256];
+            __shared__ field_t mult_b[256];
+            __shared__ field_t mult_results[256];
+            int mult_count = 0;
+            mult_a[tid + mult_count] = p31.X;
+            mult_b[tid + mult_count] = p2.ZZ;
+            mult_count++;
+            montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
+            U = mult_results[tid];
+
+            mult_count = 0;
+            mult_a[tid + mult_count] = p31.Y; // p2.X * ZZ
+            mult_b[tid + mult_count] = p2.ZZZ;
+            mult_count++;
+            montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
+            S = mult_results[tid]; // p2.X * ZZ
+
+            mult_count = 0;
+            mult_a[tid + mult_count] = p2.X; // p2.X * ZZ
+            mult_b[tid + mult_count] = p31.ZZ;
+            mult_count++;
+            montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
+            P = mult_results[tid]; // p2.X * ZZ
+
+            mult_count = 0;
+            mult_a[tid + mult_count] = p2.Y; // p2.X * ZZ
+            mult_b[tid + mult_count] = p31.ZZZ;
+            mult_count++;
+            montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
+            R = mult_results[tid]; // p2.X * ZZ
+
+            // U = p31.X * p2.ZZ;          /* U1 = X1*ZZ2 */
+            // S = p31.Y * p2.ZZZ;         /* S1 = Y1*ZZZ2 */
+            // P = p2.X * p31.ZZ;          /* U2 = X2*ZZ1 */
+            // R = p2.Y * p31.ZZZ;         /* S2 = Y2*ZZZ1 */
+            P -= U; /* P = U2-U1 */
+            R -= S; /* R = S2-S1 */
+
+            if (!P.is_zero())
+            {               /* X1!=X2 */
+                field_t PP; /* add |p1| and |p2| */
+
+                PP = P ^ 2; /* PP = P^2 */
+#define PPP P
+                PPP = P * PP;   /* PPP = P*PP */
+                p31.ZZ *= PP;   /* ZZ3 = ZZ1*ZZ2*PP */
+                p31.ZZZ *= PPP; /* ZZZ3 = ZZZ1*ZZZ2*PPP */
+#define Q PP
+                Q = U * PP;    /* Q = U1*PP */
+                p31.X = R ^ 2; /* R^2 */
+                p31.X -= PPP;  /* R^2-PPP */
+                p31.X -= Q;
+                p31.X -= Q; /* X3 = R^2-PPP-2*Q */
+                Q -= p31.X;
+                Q *= R;            /* R*(Q-X3) */
+                p31.Y = S * PPP;   /* S1*PPP */
+                p31.Y = Q - p31.Y; /* Y3 = R*(Q-X3)-S1*PPP */
+                p31.ZZ *= p2.ZZ;   /* ZZ1*ZZ2 */
+                p31.ZZZ *= p2.ZZZ; /* ZZZ1*ZZZ2 */
+#undef PPP
+#undef Q
+            }
+            else if (R.is_zero())
+            {              /* X1==X2 && Y1==Y2 */
+                field_t M; /* double |p1| */
+
+                U = p31.Y + p31.Y; /* U = 2*Y1 */
+#define V P
+#define W R
+                V = U ^ 2;     /* V = U^2 */
+                W = U * V;     /* W = U*V */
+                S = p31.X * V; /* S = X1*V */
+                M = p31.X ^ 2;
+                M = M + M + M; /* M = 3*X1^2[+a*ZZ1^2] */
+                if (a4 != nullptr)
+                {
+                    U = *a4;
+                    U *= p31.ZZ ^ 2;
+                    M += U;
+                }
+                p31.X = M ^ 2;
+                p31.X -= S;
+                p31.X -= S; /* X3 = M^2-2*S */
+                p31.Y *= W; /* W*Y1 */
+                S -= p31.X;
+                S *= M;            /* M*(S-X3) */
+                p31.Y = S - p31.Y; /* Y3 = M*(S-X3)-W*Y1 */
+                p31.ZZ *= V;       /* ZZ3 = V*ZZ1 */
+                p31.ZZZ *= W;      /* ZZZ3 = W*ZZZ1 */
+#undef V
+#undef W
+            }
+            else
+            {              /* X1==X2 && Y1==-Y2 */
+                p31.inf(); /* set |p3| to infinity */
+            }
+            *this = p31;
+        }
+
+        
+
         __device__ void add_a(const affine_t &p2)
         {
             if (p2.is_inf())
@@ -295,92 +630,7 @@ namespace device
             }
         }
 
-
-        __device__ void madd_a(const affine_t &p2)
-        {
-            if (p2.is_inf())
-            {
-                return;
-            }
-            else if (is_inf())
-            {
-                *this = p2;
-                return;
-            }
-            else
-            {
-                field_t delta_x, delta_y;
-
-                // delta_y = Y2 * ZZZ1 - Y1
-                delta_y = p2.Y * ZZZ;
-                delta_y -= Y;
-
-                // delta_x = X2 * ZZ1 - X1
-                delta_x = p2.X * ZZ;
-                delta_x -= X;
-
-                // Case 1: General point addition (p1 != p2)
-                if (!delta_x.is_zero())
-                {
-                    field_t delta_x_sq = delta_x ^ 2;             /* delta_x_sq = delta_x^2 */
-                    field_t delta_x_cubed = delta_x * delta_x_sq; /* delta_x_cubed = delta_x * delta_x_sq */
-                    field_t temp_val = delta_x_sq * X;            /* temp_val = X1 * delta_x_sq */
-
-                    // Update ZZ and ZZZ
-                    ZZ *= delta_x_sq;     /* ZZ3 = ZZ1 * delta_x_sq */
-                    ZZZ *= delta_x_cubed; /* ZZZ3 = ZZZ1 * delta_x_cubed */
-
-                    // Calculate X3
-                    X = delta_y ^ 2; /* delta_y^2 */
-                    X -= delta_x_cubed;   /* delta_y^2 - delta_x_cubed */
-                    X -= temp_val;
-                    X -= temp_val; /* X3 = delta_y^2 - delta_x_cubed - 2 * temp_val */
-
-                    // Calculate Y3
-                    field_t temp_y = temp_val - X;
-                    temp_y *= delta_y;                            /* delta_y * (temp_val - X3) */
-                    field_t y1_delta_x_cubed = Y * delta_x_cubed; /* Y1 * delta_x_cubed */
-                    Y = temp_y - y1_delta_x_cubed;                /* Y3 = delta_y * (temp_val - X3) - Y1 * delta_x_cubed */
-                }
-                // Case 2: Point doubling (p1 == p2) - where p2 is affine
-                else if (delta_y.is_zero())
-                {
-                    field_t two_y = p2.Y + p2.Y;       /* two_y = 2 * Y1 */
-                    field_t two_y_sq = two_y ^ 2; /* two_y_sq = (2 * Y1)^2 */
-                    field_t three_x_sq;
-
-                    // ZZ3 = (2 * Y1)^2
-                    ZZ = two_y_sq;
-
-                    // ZZZ3 = ZZ3 * (2 * Y1)
-                    ZZZ = ZZ * two_y;
-
-                    // Calculate 3 * X1^2 + a
-                    three_x_sq = p2.X ^ 2;
-                    three_x_sq = three_x_sq + three_x_sq + three_x_sq; /* 3 * X1^2 */
-
-
-                    // Calculate X3
-                    X = three_x_sq ^ 2; /* (3 * X1^2 + a)^2 */
-                    field_t s = p2.X * ZZ;   /* s = X1 * ZZ3 */
-                    X -= s;
-                    X -= s; /* X3 = (3 * X1^2 + a)^2 - 2 * s */
-
-                    // Calculate Y3
-                    field_t temp_y = s - X;
-                    temp_y *= three_x_sq;     /* (3 * X1^2 + a) * (s - X3) */
-                    field_t wy1 = ZZZ * p2.Y; /* ZZZ3 * Y1 */
-                    Y = temp_y - wy1;         /* Y3 = (3 * X1^2 + a) * (s - X3) - ZZZ3 * Y1 */
-                }
-                // Case 3: Addition of opposites (p1 == -p2)
-                else
-                {
-                    inf();
-                }
-            }
-        }
-
-        __device__ void madd(const xyzz_t &p2)
+        __device__ void add(const xyzz_t &p2)
         {
             if (p2.is_inf())
             {
@@ -392,168 +642,77 @@ namespace device
                 return;
             }
 
-            xyzz_t result = *this;
+            xyzz_t p31 = *this;
+            field_t U, S, P, R;
 
-            field_t u1, s1, u2, s2;
-
-            u1 = result.X * p2.ZZ;  /* u1 = X1 * ZZ2 */
-            s1 = result.Y * p2.ZZZ; /* s1 = Y1 * ZZZ2 */
-            u2 = p2.X * result.ZZ;  /* u2 = X2 * ZZ1 */
-            s2 = p2.Y * result.ZZZ; /* s2 = Y2 * ZZZ1 */
-
-            field_t p = u2 - u1; /* p = u2 - u1 */
-            field_t r = s2 - s1; /* r = s2 - s1 */
-
-            // Case 1: General point addition (p1 != p2)
-            if (!p.is_zero())
-            {
-                field_t pp = p ^ 2; /* pp = p^2 */
-                field_t ppp = p * pp;    /* ppp = p * pp */
-                field_t q = u1 * pp;     /* q = u1 * pp */
-
-                result.ZZ *= pp;   /* ZZ3 = ZZ1 * ZZ2 * pp */
-                result.ZZZ *= ppp; /* ZZZ3 = ZZZ1 * ZZZ2 * ppp */
-
-                // Calculate X3 coordinate
-                field_t r_sq = r ^ 2;     /* r^2 */
-                result.X = r_sq - ppp - q - q; /* X3 = r^2 - p^3 - 2 * q */
-
-                // Calculate Y3 coordinate
-                field_t temp_y = q - result.X;
-                temp_y *= r;                /* r * (q - X3) */
-                field_t s1_ppp = s1 * ppp;  /* s1 * p^3 */
-                result.Y = temp_y - s1_ppp; /* Y3 = r * (q - X3) - s1 * p^3 */
-            }
-            // Case 2: Point doubling (p1 == p2)
-            else if (r.is_zero())
-            {
-                field_t u = result.Y + result.Y; /* u = 2 * Y1 */
-                field_t v = u ^ 2;          /* v = u^2 */
-                field_t w = u * v;               /* w = u * v */
-                field_t s = result.X * v;        /* s = X1 * v */
-                field_t m = result.X ^ 2;   /* m = X1^2 */
-                m = m + m + m;                   /* m = 3 * X1^2 */
-                // Calculate X3 coordinate
-                field_t m_sq = m ^ 2; /* m^2 */
-                result.X = m_sq - s - s;   /* X3 = m^2 - 2 * s */
-
-                // Calculate Y3 coordinate
-                field_t temp_y = s - result.X;
-                temp_y *= m;                 /* m * (s - X3) */
-                field_t w_y1 = result.Y * w; /* w * Y1 */
-                result.Y = temp_y - w_y1;    /* Y3 = m * (s - X3) - w * Y1 */
-
-                // Update ZZ and ZZZ coordinates of the result
-                result.ZZ *= v;  /* ZZ3 = v * ZZ1 */
-                result.ZZZ *= w; /* ZZZ3 = w * ZZZ1 */
-            }
-            // Case 3: Addition of opposites (p1 == -p2)
-            else
-            {
-                result.inf(); /* set result to infinity */
-            }
-            *this = result;
-        }
-
-        __device__ void mmadd_a(const affine_t &p2)
-        {
-            if (p2.is_inf())
-            {
-                return;
-            }
-            if (is_inf())
-            {
-                *this = p2;
-                return;
-            }
-            field_t P, R;
-            uint32_t tid = threadIdx.x;
-            uint32_t block_size = 256;
-            __shared__ field_t mult_a[256];
-            __shared__ field_t mult_b[256];
-            __shared__ field_t mult_results[256];
-            int mult_count = 0;
-            mult_a[tid + mult_count] = p2.Y; // p2.Y * ZZZ
-            mult_b[tid + mult_count] = ZZZ;
-            mult_count++;
-            __syncthreads();
-            montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
-            __syncthreads();
-
-            field_t temp1 = mult_results[tid]; // p2.Y * ZZZ
-            R = temp1 - Y;                   // delta_y = p2.Y * ZZZ - Y
-            // if(tid == 0 && blockIdx.x == 0){
-            //     field_t tttt = p2.Y * ZZZ; /* S2 = Y2*ZZZ1 */
-            //     printf("======\n");
-            //     print_num(tttt);
-            //     printf("======\n");
-            //     print_num(temp1);
-            // }
-            mult_count = 0;
-            mult_a[tid+ mult_count] = p2.X; // p2.X * ZZ
-            mult_b[tid + mult_count] = ZZ;
-            mult_count++;
-            __syncthreads();
-            montgomery_mult_coop_kernel(mult_a, mult_b, mult_results, mult_count * block_size);
-            __syncthreads();
-            field_t temp2 = mult_results[tid]; // p2.X * ZZ
-            P = temp2 - X;                   // delta_x = p2.X * ZZ - X
-
-            // R = p2.Y * ZZZ; /* S2 = Y2*ZZZ1 */
-            // R -= Y;         /* R = S2-Y1 */
-            // P = p2.X * ZZ;  /* U2 = X2*ZZ1 */
-            // P -= X;         /* P = U2-X1 */
+            U = p31.X * p2.ZZ;  /* U1 = X1*ZZ2 */
+            S = p31.Y * p2.ZZZ; /* S1 = Y1*ZZZ2 */
+            P = p2.X * p31.ZZ;  /* U2 = X2*ZZ1 */
+            R = p2.Y * p31.ZZZ; /* S2 = Y2*ZZZ1 */
+            P -= U;             /* P = U2-U1 */
+            R -= S;             /* R = S2-S1 */
 
             if (!P.is_zero())
             {               /* X1!=X2 */
-                field_t PP; /* add |p2| to |p1| */
+                field_t PP; /* add |p1| and |p2| */
 
                 PP = P ^ 2; /* PP = P^2 */
 #define PPP P
-                PPP = P * PP; /* PPP = P*PP */
-                ZZ *= PP;     /* ZZ3 = ZZ1*PP */
-                ZZZ *= PPP;   /* ZZZ3 = ZZZ1*PPP */
+                PPP = P * PP;   /* PPP = P*PP */
+                p31.ZZ *= PP;   /* ZZ3 = ZZ1*ZZ2*PP */
+                p31.ZZZ *= PPP; /* ZZZ3 = ZZZ1*ZZZ2*PPP */
 #define Q PP
-                Q = PP * X; /* Q = X1*PP */
-                X = R ^ 2;  /* R^2 */
-                X -= PPP;   /* R^2-PPP */
-                X -= Q;
-                X -= Q; /* X3 = R^2-PPP-2*Q */
-                Q -= X;
-                Q *= R;    /* R*(Q-X3) */
-                Y *= PPP;  /* Y1*PPP */
-                Y = Q - Y; /* Y3 = R*(Q-X3)-Y1*PPP */
-#undef Q
+                Q = U * PP;    /* Q = U1*PP */
+                p31.X = R ^ 2; /* R^2 */
+                p31.X -= PPP;  /* R^2-PPP */
+                p31.X -= Q;
+                p31.X -= Q; /* X3 = R^2-PPP-2*Q */
+                Q -= p31.X;
+                Q *= R;            /* R*(Q-X3) */
+                p31.Y = S * PPP;   /* S1*PPP */
+                p31.Y = Q - p31.Y; /* Y3 = R*(Q-X3)-S1*PPP */
+                p31.ZZ *= p2.ZZ;   /* ZZ1*ZZ2 */
+                p31.ZZZ *= p2.ZZZ; /* ZZZ1*ZZZ2 */
 #undef PPP
+#undef Q
             }
             else if (R.is_zero())
             {              /* X1==X2 && Y1==Y2 */
-                field_t M; /* double |p2| */
+                field_t M; /* double |p1| */
 
-#define U P
-                U = p2.Y + p2.Y; /* U = 2*Y1 */
-                ZZ = U ^ 2;      /* [ZZ3 =] V = U^2 */
-                ZZZ = ZZ * U;    /* [ZZZ3 =] W = U*V */
-#define S R
-                S = p2.X * ZZ; /* S = X1*V */
-                M = p2.X ^ 2;
-                M = M + M + M; /* M = 3*X1^2[+a] */
-                X = M ^ 2;
-                X -= S;
-                X -= S;         /* X3 = M^2-2*S */
-                Y = ZZZ * p2.Y; /* W*Y1 */
-                S -= X;
-                S *= M;    /* M*(S-X3) */
-                Y = S - Y; /* Y3 = M*(S-X3)-W*Y1 */
-#undef S
-#undef U
+                U = p31.Y + p31.Y; /* U = 2*Y1 */
+#define V P
+#define W R
+                V = U ^ 2;     /* V = U^2 */
+                W = U * V;     /* W = U*V */
+                S = p31.X * V; /* S = X1*V */
+                M = p31.X ^ 2;
+                M = M + M + M; /* M = 3*X1^2[+a*ZZ1^2] */
+                if (a4 != nullptr)
+                {
+                    U = *a4;
+                    U *= p31.ZZ ^ 2;
+                    M += U;
+                }
+                p31.X = M ^ 2;
+                p31.X -= S;
+                p31.X -= S; /* X3 = M^2-2*S */
+                p31.Y *= W; /* W*Y1 */
+                S -= p31.X;
+                S *= M;            /* M*(S-X3) */
+                p31.Y = S - p31.Y; /* Y3 = M*(S-X3)-W*Y1 */
+                p31.ZZ *= V;       /* ZZ3 = V*ZZ1 */
+                p31.ZZZ *= W;      /* ZZZ3 = W*ZZZ1 */
+#undef V
+#undef W
             }
             else
-            {          /* X1==X2 && Y1==-Y2 */
-                inf(); /* set |p3| to infinity */
+            {              /* X1==X2 && Y1==-Y2 */
+                p31.inf(); /* set |p3| to infinity */
             }
+            *this = p31;
         }
-        
+
         __device__ void add(const xyzz_t &p2)
         {
             if (p2.is_inf())

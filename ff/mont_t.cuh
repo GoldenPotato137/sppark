@@ -48,11 +48,13 @@ public:
 public:
     static __device__ const uint32_t* get_MOD() { return MOD; }
     static __device__ const uint32_t* get_MODN() { return MODN; }
+    static __device__ const uint32_t get_M0() { return M0; }
     operator uint32_t*()                         { return even;    }
 
 private:
     uint32_t even[n];
 
+public:
     // a[] x b => acc
     static inline void mul_n(uint32_t* acc, const uint32_t* a, uint32_t bi,
                              size_t tn=n)
@@ -86,6 +88,7 @@ private:
         // return carry flag
     }
 
+public:
     class wide_t {
     private:
         union {
@@ -96,6 +99,7 @@ private:
     public:
         inline uint32_t& operator[](size_t i)               { return even[i]; }
         inline const uint32_t& operator[](size_t i) const   { return even[i]; }
+        inline uint32_t* data()                      { return even;    }
         inline operator mont_t()
         {
             s[0].mul_by_1();
@@ -656,7 +660,7 @@ private:
 
         asm("}");
     }
-
+public:
     inline void final_subc()
     {
         uint32_t carry, tmp[n];
@@ -1244,9 +1248,10 @@ namespace device
         uint32_t *shared_MODN = shared_MOD + s;
         uint32_t *shared_m_pool = shared_MODN + s;
         uint32_t *shared_mMOD_results = shared_m_pool + blockDim.x * s;
+        __shared__ uint32_t tmp[128 * 8];
 
         uint32_t tid = threadIdx.x;
-        uint32_t block_dim =  blockDim.x;
+        uint32_t block_dim = blockDim.x;
 
 #pragma unroll
         if (tid == 0)
@@ -1260,56 +1265,28 @@ namespace device
             }
         }
         __syncthreads();
-
+        uint32_t *mMOD_result_location = shared_mMOD_results + tid * s2;
+        uint32_t *tmp_location = tmp + tid * s;
         if (tid < n)
         {
-            uint32_t local_t[s2] = {0};
-            uint32_t local_m[s] = {0};
-            uint32_t local_a[s];
-            uint32_t local_b[s];
-            uint32_t local_result[s];
-
+            uint32_t* local_t = typename mont_t::wide_t(a_shared[tid], b_shared[tid]).data();
 #pragma unroll
             for (int i = 0; i < s; ++i)
             {
-                local_a[i] = a_shared[tid][i];
-                local_b[i] = b_shared[tid][i];
+                tmp_location[i] = local_t[i];
             }
 
-            for (size_t i = 0; i < s; i++)
-            {
-                uint32_t C = 0;
-                uint64_t b_i = local_b[i];
-                for (size_t j = 0; j < s; j++)
-                {
-                    uint64_t temp = local_t[i + j] + (uint64_t)local_a[j] * b_i + C;
-                    local_t[i + j] = (uint32_t)temp;
-                    C = (uint32_t)(temp >> 32);
-                }
-                if (i + s < s2)
-                {
-                    local_t[i + s] = C;
-                }
-            }
+            // tensor_mont::tensor_calc_kernel(
+            //     tmp,
+            //     shared_MOD,
+            //     shared_m_pool,
+            //     block_dim);
 
-            for (size_t i = 0; i < s; i++)
-            {
-                uint32_t C = 0;
-                uint64_t t_i = local_t[i];
-                for (size_t j = 0; (i + j) < s; j++)
-                {
-                    uint64_t temp = (uint64_t)local_m[i + j] + t_i * shared_MODN[j] + C;
-                    local_m[i + j] = (uint32_t)temp;
-                    C = (uint32_t)(temp >> 32);
-                }
-            }
-
-            uint32_t *my_shared_m_location = shared_m_pool + tid * s;
-#pragma unroll
-            for (int i = 0; i < s; ++i)
-            {
-                my_shared_m_location[i] = local_m[i];
-            }
+            ff_sppark::ff_sppark_half_calc_kernel(
+                tmp,
+                shared_MODN,
+                shared_m_pool,
+                block_dim);
 
             // tensor_mont::tensor_calc_kernel(
             //     shared_m_pool,
@@ -1323,55 +1300,10 @@ namespace device
                 shared_mMOD_results,
                 block_dim);
 
-            uint32_t *my_mMOD_result_location = shared_mMOD_results + tid * s2;
-            uint32_t C_add = 0;
-#pragma unroll
-            for (size_t i = 0; i < s2; ++i)
-            {
-                uint64_t temp = (uint64_t)local_t[i] + my_mMOD_result_location[i] + C_add;
-                local_t[i] = (uint32_t)temp;
-                C_add = (uint32_t)(temp >> 32);
-            }
+            mont_t::cadd_n(local_t, mMOD_result_location, s2);
 
-#pragma unroll
-            for (size_t i = 0; i < s; i++)
-            {
-                local_result[i] = local_t[s + i];
-            }
-
-            uint32_t greater_or_equal = 1;
-#pragma unroll
-            for (int i = s - 1; i >= 0; i--)
-            {
-                if (local_result[i] < shared_MOD[i])
-                {
-                    greater_or_equal = 0;
-                    break;
-                }
-                else if (local_result[i] > shared_MOD[i])
-                {
-                    greater_or_equal = 1;
-                    break;
-                }
-            }
-
-            if (greater_or_equal)
-            {
-                uint32_t borrow = 0;
-#pragma unroll
-                for (size_t i = 0; i < s; i++)
-                {
-                    uint64_t diff = (uint64_t)local_result[i] - shared_MOD[i] - borrow;
-                    local_result[i] = (uint32_t)diff;
-                    borrow = (diff >> 32) & 1ULL ? 1 : 0;
-                }
-            }
-
-#pragma unroll
-            for (int i = 0; i < s; ++i)
-            {
-                result_shared[tid][i] = local_result[i];
-            }
+            result_shared[tid] = mont_t(local_t + s);
+            result_shared[tid].final_subc();
         }
     }
 }
