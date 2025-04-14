@@ -15,7 +15,6 @@
 #endif
 # pragma nv_diag_suppress 284   // NULL reference is not allowed
 
-#include "../ff/mont_t.cuh"
 #include "gmp.h"
 #include "../ff/mont_t.cuh"
 #include "../../cgbn/cgbn.h"
