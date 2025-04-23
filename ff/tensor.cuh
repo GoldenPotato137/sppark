@@ -1,6 +1,6 @@
 
 #include <mma.h>
-#include <cublasdx.hpp>
+#include <cute/tensor.hpp>
 #include <cooperative_groups/memcpy_async.h>
 #include <cuda/pipeline>
 #include "param.cuh"

@@ -18,6 +18,7 @@ add_subdirectory(test)
 file(GLOB_RECURSE SOURCES "ec/*.hpp" "ec/*.cuh" "ff/*.hpp" "ff/*.cuh" "msm/*.hpp" "msm/*.cuh" "util/*.hpp" "util/*.cuh")
 list(APPEND SOURCES "util/all_gpus.cu")
 add_library(sppark ${SOURCES} ${LIB_BLST_SRC})
+target_include_directories(sppark PUBLIC "depends/cutlass/include")
 
 set_target_properties(sppark PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)
