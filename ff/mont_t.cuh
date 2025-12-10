@@ -33,8 +33,18 @@
 //    __device__ __constant__ /*const*/ my_M0 = <literal>;
 //
 namespace device{
-template<const size_t N, const uint32_t MOD[(N+31)/32], const uint32_t& M0,
-         const uint32_t RR[(N+31)/32], const uint32_t ONE[(N+31)/32],
+    // typedef mont_t<254, 
+    //             device::ALT_BN128_r,            // 模数 N = r
+    //             device::ALT_BN128_m0,                   // m0 ≈ N'
+    //             device::ALT_BN128_rRR,                  // R^2 mod r
+    //             device::ALT_BN128_rone,                 // 1 的 Montgomery 表示 = R mod r
+    //             device::ALT_BN128_rx4,                  // 4 的 Montgomery 表示 = 4R mod r
+    //             device::ALT_BN128_MODN> fr_mont;
+template<const size_t N,
+         const uint32_t MOD[(N+31)/32], 
+         const uint32_t& M0,
+         const uint32_t RR[(N+31)/32], 
+         const uint32_t ONE[(N+31)/32],
          const uint32_t MODx[(N+31)/32] = MOD,
          const uint32_t MODN[(N+31)/32] = MOD>
 class __align__(((N+63)/64)&1 ? 8 : 16) mont_t {

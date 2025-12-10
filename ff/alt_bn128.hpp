@@ -15,6 +15,7 @@
 
 # pragma nv_diag_suppress 20012
 
+
 namespace device
 {
 #define TO_CUDA_T(limb64) (uint32_t)(limb64), (uint32_t)(limb64>>32)
@@ -68,9 +69,12 @@ namespace device
     static __device__ __constant__ const uint32_t ALT_BN128_m0 = 0xefffffff;
 
     // device-side field types
-    typedef mont_t<254, device::ALT_BN128_P, device::ALT_BN128_M0,
-            device::ALT_BN128_RR, device::ALT_BN128_one,
-            device::ALT_BN128_Px4,device::ALT_BN128_MODn> fp_mont;
+    typedef mont_t<254, device::ALT_BN128_P, 
+                device::ALT_BN128_M0,
+                device::ALT_BN128_RR, 
+                device::ALT_BN128_one,
+                device::ALT_BN128_Px4,
+                device::ALT_BN128_MODn> fp_mont;
 
     struct fp_t : public fp_mont
     {
@@ -83,10 +87,12 @@ namespace device
         __device__ fp_t(uint32_t a) : fp_mont(a){}
     };
 
-    typedef mont_t<254, device::ALT_BN128_r, device::ALT_BN128_m0,
-            device::ALT_BN128_rRR, device::ALT_BN128_rone,
-            device::ALT_BN128_rx4,
-            device::ALT_BN128_MODN> fr_mont;
+    typedef mont_t<254, device::ALT_BN128_r,            // 模数 N = r
+                device::ALT_BN128_m0,                   // m0 ≈ N'
+                device::ALT_BN128_rRR,                  // R^2 mod r
+                device::ALT_BN128_rone,                 // 1 的 Montgomery 表示 = R mod r
+                device::ALT_BN128_rx4,                  // 4 的 Montgomery 表示 = 4R mod r
+                device::ALT_BN128_MODN> fr_mont;
 
     struct fr_t : public fr_mont
     {
@@ -98,6 +104,8 @@ namespace device
 
         __device__ __forceinline__ fr_t(const fr_mont &a) : fr_mont(a) {}
     };
+
+    static constexpr int LAMBDA = 254;
 }
 
 // host-side field types
