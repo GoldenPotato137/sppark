@@ -9,7 +9,6 @@
 # include <cstdint>
 # include <cstdio>
 # include "pow.hpp"
-#include "tensor.cuh"
 #include "ff_sppark.cuh"
 # define inline __device__ __forceinline__
 # ifdef __GNUC__
