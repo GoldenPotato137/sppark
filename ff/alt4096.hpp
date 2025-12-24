@@ -1,0 +1,924 @@
+// Copyright Supranational LLC
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+#ifndef __SPPARK_FF_ALT4094_HPP__
+#define __SPPARK_FF_ALT4094_HPP__
+
+# include <cstdint>
+# include "mont_t.cuh"
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsubobject-linkage"
+#endif
+
+# pragma nv_diag_suppress 20012
+
+namespace device
+{
+#define TO_CUDA_T(limb64) (uint32_t)(limb64), (uint32_t)(limb64>>32)
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_P[128] = {
+                TO_CUDA_T(0x79e5bc58caba3911),
+            TO_CUDA_T(0x5f35eb893b4f16ae),
+            TO_CUDA_T(0x8c122bc37852751a),
+            TO_CUDA_T(0x484a625e1ce22d41),
+            TO_CUDA_T(0xf031648f39cc200d),
+            TO_CUDA_T(0x727d444248d66e2d),
+            TO_CUDA_T(0x1d5b1e3040edf7ca),
+            TO_CUDA_T(0x4e87d3de1e01b696),
+            TO_CUDA_T(0xc13e85aa4fab1649),
+            TO_CUDA_T(0x975f6d456b3775cb),
+            TO_CUDA_T(0x26f338c699bb54a2),
+            TO_CUDA_T(0xfbc6836fdd1bf851),
+            TO_CUDA_T(0xaa05fec9af206f32),
+            TO_CUDA_T(0x8709bcc98a5146f3),
+            TO_CUDA_T(0xc9a199ee1871b1a7),
+            TO_CUDA_T(0x1a86d8636aad9751),
+            TO_CUDA_T(0x35a0f8371edcd81a),
+            TO_CUDA_T(0xd7c3fc02c0582149),
+            TO_CUDA_T(0xe3078516380c5ead),
+            TO_CUDA_T(0x9e24ef9d305e7972),
+            TO_CUDA_T(0x58938565fd1a1734),
+            TO_CUDA_T(0x1a3613ea314b414c),
+            TO_CUDA_T(0xbba3522b8a0322cf),
+            TO_CUDA_T(0x9f516cc0fec62f86),
+            TO_CUDA_T(0x2c32e6e066562251),
+            TO_CUDA_T(0x526ae27b0ad09f54),
+            TO_CUDA_T(0x808c6e26d7f98b39),
+            TO_CUDA_T(0xe51cc170b764c33d),
+            TO_CUDA_T(0x07aaa3a171dbd6aa),
+            TO_CUDA_T(0x1d47136716e63217),
+            TO_CUDA_T(0xea3112e59978be49),
+            TO_CUDA_T(0xe432c5ab5e625ee4),
+            TO_CUDA_T(0x6f31b821401553ff),
+            TO_CUDA_T(0x3212bac6e97f7fa2),
+            TO_CUDA_T(0x15e3daff4dfd10ce),
+            TO_CUDA_T(0xa029774bd741cf7a),
+            TO_CUDA_T(0x762277672e482f43),
+            TO_CUDA_T(0xd39b204dc2d20e82),
+            TO_CUDA_T(0x3351d7a8f8b2f5b2),
+            TO_CUDA_T(0x3a8bcd093dd2924d),
+            TO_CUDA_T(0x339f48ee13ce5083),
+            TO_CUDA_T(0xc382a209d12a8cfa),
+            TO_CUDA_T(0x69d58913c7e3b5c1),
+            TO_CUDA_T(0x8abfaa3b02e6dc8d),
+            TO_CUDA_T(0x6778dc8b80997a5a),
+            TO_CUDA_T(0x72a585a5eab58183),
+            TO_CUDA_T(0x274123d08a77d0df),
+            TO_CUDA_T(0xa285254df558e1f4),
+            TO_CUDA_T(0x57e19ab523cafe5b),
+            TO_CUDA_T(0xb3bb70029bc83572),
+            TO_CUDA_T(0x6a49b9cd562f45b4),
+            TO_CUDA_T(0x82a68f1f44ff38a7),
+            TO_CUDA_T(0x6167e1b62f55dcd1),
+            TO_CUDA_T(0x30ec62536345ad54),
+            TO_CUDA_T(0x21d40a7e50031026),
+            TO_CUDA_T(0xd36f7fc400d8169e),
+            TO_CUDA_T(0x4cb2028edfa205b2),
+            TO_CUDA_T(0x7257c04a7de4b527),
+            TO_CUDA_T(0xcfd6775509e687ba),
+            TO_CUDA_T(0x8c2c3eae28f5c1cf),
+            TO_CUDA_T(0xfb2b5178a2739cb0),
+            TO_CUDA_T(0xff68bbeaec5091e3),
+            TO_CUDA_T(0x0b08ec9f6ca1f963),
+            TO_CUDA_T(0x24fa1789630013d8)
+    };
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_RR[128] = { /* (1<<512)%P */
+                TO_CUDA_T(0x33334571bb78334a),
+            TO_CUDA_T(0xa70577182eda24f3),
+            TO_CUDA_T(0x38920e43ea9c9e4e),
+            TO_CUDA_T(0x576f86f86e6074d4),
+            TO_CUDA_T(0x78d7a68437345fa6),
+            TO_CUDA_T(0x946c3d1c47463e00),
+            TO_CUDA_T(0xd5fa943384c65526),
+            TO_CUDA_T(0xe2f52f5a97204dff),
+            TO_CUDA_T(0x15d38553d0d930b9),
+            TO_CUDA_T(0x51ca03483930a63d),
+            TO_CUDA_T(0x940ad0576796343f),
+            TO_CUDA_T(0x0b71d0a02a097711),
+            TO_CUDA_T(0xe7343ec7e1160473),
+            TO_CUDA_T(0x3d1861effe84adfe),
+            TO_CUDA_T(0x6efdd279917119d6),
+            TO_CUDA_T(0x4b3c7f22de1ca5ab),
+            TO_CUDA_T(0x3d76f64fbb31c2be),
+            TO_CUDA_T(0xb4a82bb550446d34),
+            TO_CUDA_T(0x56954f7a68bf8b83),
+            TO_CUDA_T(0x582f4b87ded16e0c),
+            TO_CUDA_T(0x9038941fab1e8f4c),
+            TO_CUDA_T(0x8c1124d3574029b4),
+            TO_CUDA_T(0xb65e670e5a026faf),
+            TO_CUDA_T(0xb6fc4b43262f0811),
+            TO_CUDA_T(0x8a625dd70e042175),
+            TO_CUDA_T(0x9870b5479f7be19b),
+            TO_CUDA_T(0x741bd012d323e5fc),
+            TO_CUDA_T(0xd6c75688eb1aef7b),
+            TO_CUDA_T(0x1c60aa1c6f136900),
+            TO_CUDA_T(0x2c5d3f6edc54a87b),
+            TO_CUDA_T(0x0f20d73d1336e494),
+            TO_CUDA_T(0x45d21d3f3af416f9),
+            TO_CUDA_T(0x5bea02a4a4e22c29),
+            TO_CUDA_T(0xfb12b197c0ca4845),
+            TO_CUDA_T(0x7d5091fb8640423f),
+            TO_CUDA_T(0xbcc70319c848564d),
+            TO_CUDA_T(0x4044ebdd4aec634e),
+            TO_CUDA_T(0x48b9b5ffdd309c71),
+            TO_CUDA_T(0xc587d1711c51c3a8),
+            TO_CUDA_T(0xdbe69bdf2469d6a3),
+            TO_CUDA_T(0x8eccad9121685a5b),
+            TO_CUDA_T(0x5f6059f670587c7f),
+            TO_CUDA_T(0xf917c22111b655a3),
+            TO_CUDA_T(0x5afa7ff0974f15aa),
+            TO_CUDA_T(0xbe1cd18a81f60f5a),
+            TO_CUDA_T(0x50346e38faa14b32),
+            TO_CUDA_T(0x9e71fe1cff8e6f26),
+            TO_CUDA_T(0x1d9c9e979f483f7b),
+            TO_CUDA_T(0x62493850ed10af03),
+            TO_CUDA_T(0x2b2849e1738e8e17),
+            TO_CUDA_T(0x6aa048293ae1f186),
+            TO_CUDA_T(0x2103ecb7def64989),
+            TO_CUDA_T(0x1bab207f4d162808),
+            TO_CUDA_T(0x63eae9d833e76cb2),
+            TO_CUDA_T(0x662d3a4dea7f3725),
+            TO_CUDA_T(0x07b262e481b0d4a8),
+            TO_CUDA_T(0x4ee1d204915ac2df),
+            TO_CUDA_T(0xf0b67bd5b33b2ae4),
+            TO_CUDA_T(0x7e2d796bef3e62ee),
+            TO_CUDA_T(0x813e7dcbb51ff00f),
+            TO_CUDA_T(0xf2fdeec33d76c539),
+            TO_CUDA_T(0xf9838ba60e46f980),
+            TO_CUDA_T(0x7a4870438b4353c1),
+            TO_CUDA_T(0x08f9fb9f3b50733a)
+    };
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_one[128] = { /* (1<<256)%P */
+                TO_CUDA_T(0x249d95eb3fa2a99a),
+            TO_CUDA_T(0xc4bc7ac89c2577e9),
+            TO_CUDA_T(0xb792f96b2e114161),
+            TO_CUDA_T(0x4e41b1cb52b2f076),
+            TO_CUDA_T(0x5ed7a4a4a5373fb0),
+            TO_CUDA_T(0x511066724af96aec),
+            TO_CUDA_T(0x4fdd4ade7a6c3141),
+            TO_CUDA_T(0x28d108cb4bf5b87b),
+            TO_CUDA_T(0x7888de0221fd7a48),
+            TO_CUDA_T(0x73c3705f7cb33d39),
+            TO_CUDA_T(0x164cab58659c0430),
+            TO_CUDA_T(0x1958eb60d1582e19),
+            TO_CUDA_T(0x03dc0745e53d64ce),
+            TO_CUDA_T(0xd5c59346c218564a),
+            TO_CUDA_T(0x4636646b6d55d612),
+            TO_CUDA_T(0x60d6edab7fee7415),
+            TO_CUDA_T(0xbe3a2eb546d2ef63),
+            TO_CUDA_T(0xf16817ef7def3848),
+            TO_CUDA_T(0xadd2e17aafb5c7ec),
+            TO_CUDA_T(0x4b226250ddc9274e),
+            TO_CUDA_T(0xec8adf9c116374c4),
+            TO_CUDA_T(0x62bb8882d83c7835),
+            TO_CUDA_T(0x9a2c12fac3ed2f25),
+            TO_CUDA_T(0x4417737a075ae2d7),
+            TO_CUDA_T(0xf6ce96bd99fb3216),
+            TO_CUDA_T(0x117eb11dbf1c4406),
+            TO_CUDA_T(0xfcb56b16f026bca8),
+            TO_CUDA_T(0xa153775bb3a36c8e),
+            TO_CUDA_T(0xd2002a3754d8f7fe),
+            TO_CUDA_T(0x50558b95769ad375),
+            TO_CUDA_T(0x82d98e9e672b8a49),
+            TO_CUDA_T(0xa6cf5dfbc9b1c6a2),
+            TO_CUDA_T(0x64d5af387f800800),
+            TO_CUDA_T(0xd38f9f5687030231),
+            TO_CUDA_T(0x7ca8de042c119b2a),
+            TO_CUDA_T(0x3f073438f4752323),
+            TO_CUDA_T(0x3b313394ea4ee46a),
+            TO_CUDA_T(0x0a5d3e2d6f13a8f1),
+            TO_CUDA_T(0xcc14f20a2bce3dcf),
+            TO_CUDA_T(0xa0b931c88d109230),
+            TO_CUDA_T(0xca444a6b892a1cec),
+            TO_CUDA_T(0x6af033c51900b222),
+            TO_CUDA_T(0x84fec98950a9bd75),
+            TO_CUDA_T(0xbf82029dee96d4af),
+            TO_CUDA_T(0x932ad4bafc6721e0),
+            TO_CUDA_T(0x501ede1c7fbef6eb),
+            TO_CUDA_T(0x1479291cc1311ac3),
+            TO_CUDA_T(0x30e1202c3feab447),
+            TO_CUDA_T(0xf0b65fc1293e09da),
+            TO_CUDA_T(0xc99b5ff0594ebf51),
+            TO_CUDA_T(0x8245a52ffae45dc3),
+            TO_CUDA_T(0xf018a5446204ac13),
+            TO_CUDA_T(0xb790b5bae3fcd316),
+            TO_CUDA_T(0xda75b20bac5df005),
+            TO_CUDA_T(0x3507c10a1fed9f1a),
+            TO_CUDA_T(0x0b630167faef784b),
+            TO_CUDA_T(0x33d3f0a6c233ddcf),
+            TO_CUDA_T(0x51f17e410ca3c114),
+            TO_CUDA_T(0x20f93401c498d1a1),
+            TO_CUDA_T(0xb6f687eb0a3d7521),
+            TO_CUDA_T(0x1cfc172c314a53dc),
+            TO_CUDA_T(0x038b987e761c94a8),
+            TO_CUDA_T(0xbdca7443743427a8),
+            TO_CUDA_T(0x222372c7adff88ef)
+    };
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_Px4[128] = { /* left-aligned value of the modulus */
+                TO_CUDA_T(0xe796f1632ae8e444),
+            TO_CUDA_T(0x7cd7ae24ed3c5ab9),
+            TO_CUDA_T(0x3048af0de149d469),
+            TO_CUDA_T(0x212989787388b506),
+            TO_CUDA_T(0xc0c5923ce7308035),
+            TO_CUDA_T(0xc9f511092359b8b7),
+            TO_CUDA_T(0x756c78c103b7df29),
+            TO_CUDA_T(0x3a1f4f787806da58),
+            TO_CUDA_T(0x04fa16a93eac5925),
+            TO_CUDA_T(0x5d7db515acddd72f),
+            TO_CUDA_T(0x9bcce31a66ed528a),
+            TO_CUDA_T(0xef1a0dbf746fe144),
+            TO_CUDA_T(0xa817fb26bc81bccb),
+            TO_CUDA_T(0x1c26f32629451bce),
+            TO_CUDA_T(0x268667b861c6c69e),
+            TO_CUDA_T(0x6a1b618daab65d47),
+            TO_CUDA_T(0xd683e0dc7b736068),
+            TO_CUDA_T(0x5f0ff00b01608524),
+            TO_CUDA_T(0x8c1e1458e0317ab7),
+            TO_CUDA_T(0x7893be74c179e5cb),
+            TO_CUDA_T(0x624e1597f4685cd2),
+            TO_CUDA_T(0x68d84fa8c52d0531),
+            TO_CUDA_T(0xee8d48ae280c8b3c),
+            TO_CUDA_T(0x7d45b303fb18be1a),
+            TO_CUDA_T(0xb0cb9b8199588946),
+            TO_CUDA_T(0x49ab89ec2b427d50),
+            TO_CUDA_T(0x0231b89b5fe62ce5),
+            TO_CUDA_T(0x947305c2dd930cf6),
+            TO_CUDA_T(0x1eaa8e85c76f5aab),
+            TO_CUDA_T(0x751c4d9c5b98c85c),
+            TO_CUDA_T(0xa8c44b9665e2f924),
+            TO_CUDA_T(0x90cb16ad79897b93),
+            TO_CUDA_T(0xbcc6e08500554fff),
+            TO_CUDA_T(0xc84aeb1ba5fdfe89),
+            TO_CUDA_T(0x578f6bfd37f44338),
+            TO_CUDA_T(0x80a5dd2f5d073de8),
+            TO_CUDA_T(0xd889dd9cb920bd0e),
+            TO_CUDA_T(0x4e6c81370b483a09),
+            TO_CUDA_T(0xcd475ea3e2cbd6cb),
+            TO_CUDA_T(0xea2f3424f74a4934),
+            TO_CUDA_T(0xce7d23b84f39420c),
+            TO_CUDA_T(0x0e0a882744aa33e8),
+            TO_CUDA_T(0xa756244f1f8ed707),
+            TO_CUDA_T(0x2afea8ec0b9b7235),
+            TO_CUDA_T(0x9de3722e0265e96a),
+            TO_CUDA_T(0xca961697aad6060d),
+            TO_CUDA_T(0x9d048f4229df437d),
+            TO_CUDA_T(0x8a149537d56387d0),
+            TO_CUDA_T(0x5f866ad48f2bf96e),
+            TO_CUDA_T(0xceedc00a6f20d5c9),
+            TO_CUDA_T(0xa926e73558bd16d2),
+            TO_CUDA_T(0x0a9a3c7d13fce29d),
+            TO_CUDA_T(0x859f86d8bd577346),
+            TO_CUDA_T(0xc3b1894d8d16b551),
+            TO_CUDA_T(0x875029f9400c4098),
+            TO_CUDA_T(0x4dbdff1003605a78),
+            TO_CUDA_T(0x32c80a3b7e8816cb),
+            TO_CUDA_T(0xc95f0129f792d49d),
+            TO_CUDA_T(0x3f59dd54279a1ee9),
+            TO_CUDA_T(0x30b0fab8a3d7073f),
+            TO_CUDA_T(0xecad45e289ce72c2),
+            TO_CUDA_T(0xfda2efabb142478f),
+            TO_CUDA_T(0x2c23b27db287e58f),
+            TO_CUDA_T(0x93e85e258c004f60)
+    };
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_MODn[128] = {
+                TO_CUDA_T(0x0b3fada7c36c280f),
+            TO_CUDA_T(0xdb4e6fe183edf7e4),
+            TO_CUDA_T(0xc734a96a5f92bedf),
+            TO_CUDA_T(0x6d52bcc36c2e18e7),
+            TO_CUDA_T(0x784ebb65a41ecbae),
+            TO_CUDA_T(0xc16303159953219e),
+            TO_CUDA_T(0x6d777ba38ed781a9),
+            TO_CUDA_T(0x096b80e11a2e9727),
+            TO_CUDA_T(0x26ad51b3af9efb06),
+            TO_CUDA_T(0x5acf936bff3a7f23),
+            TO_CUDA_T(0xb722593eb77d4eb7),
+            TO_CUDA_T(0xb0e1a84b38843114),
+            TO_CUDA_T(0xb14916ad769a69f3),
+            TO_CUDA_T(0x311595cf49a73785),
+            TO_CUDA_T(0x5520f2f04b094d9b),
+            TO_CUDA_T(0xa0dfce9ac3f9456c),
+            TO_CUDA_T(0x101d2257c819466d),
+            TO_CUDA_T(0xb34c0a1a8d1373f1),
+            TO_CUDA_T(0x5b58a6d60e8e4490),
+            TO_CUDA_T(0x24dc0654f3c0202d),
+            TO_CUDA_T(0xb535868c5fe1be6a),
+            TO_CUDA_T(0x8b21e5eb8a7f37d4),
+            TO_CUDA_T(0x09400507a26c39ab),
+            TO_CUDA_T(0xf0cefc589da75548),
+            TO_CUDA_T(0x2c20d57b159a47c2),
+            TO_CUDA_T(0xd4b6c99d78b2330e),
+            TO_CUDA_T(0xb2a72feb5a78e35e),
+            TO_CUDA_T(0x8dc70d55f389f9c3),
+            TO_CUDA_T(0x129a9a77fc3d7296),
+            TO_CUDA_T(0x038c0b5f90365a09),
+            TO_CUDA_T(0xf82b0a90c5a82789),
+            TO_CUDA_T(0x9fcc209a08d5c2c4),
+            TO_CUDA_T(0x9ca4fa50878fd0d2),
+            TO_CUDA_T(0x5c61ca81c7690ac6),
+            TO_CUDA_T(0xc1f69f161e6b2131),
+            TO_CUDA_T(0x2e33e803eec80682),
+            TO_CUDA_T(0xa26187e612aa35bd),
+            TO_CUDA_T(0xa4eac411eef8d9b7),
+            TO_CUDA_T(0x473d77476a8a5680),
+            TO_CUDA_T(0xf9997aeed8dbdce3),
+            TO_CUDA_T(0x16b848e1b2860021),
+            TO_CUDA_T(0x4cadd9a0d7539fe9),
+            TO_CUDA_T(0xf45e86e907511f64),
+            TO_CUDA_T(0x5976173ba326c158),
+            TO_CUDA_T(0x205b74e3731c8a01),
+            TO_CUDA_T(0x7bbf33f85dbd17ef),
+            TO_CUDA_T(0x4eda1bcf6206841d),
+            TO_CUDA_T(0x58957db70c12fccc),
+            TO_CUDA_T(0xd7f9a2d8b621d357),
+            TO_CUDA_T(0x286f01bfa66bdd18),
+            TO_CUDA_T(0x3c267dcb3dd7bb6b),
+            TO_CUDA_T(0x1442cf33baa81344),
+            TO_CUDA_T(0x242c4106060ee8e8),
+            TO_CUDA_T(0x9acca05f47bb19e1),
+            TO_CUDA_T(0x1d7416ce3312b2fb),
+            TO_CUDA_T(0x09a643ba47d18c9f),
+            TO_CUDA_T(0x6dc08b8be823604a),
+            TO_CUDA_T(0xa90ce4845fd88180),
+            TO_CUDA_T(0xccc2af1e4e8afc9a),
+            TO_CUDA_T(0x09678605cf1db6d9),
+            TO_CUDA_T(0x593d3fc05a187c0e),
+            TO_CUDA_T(0x707cdf838de4d788),
+            TO_CUDA_T(0x1d28902f976281cd),
+            TO_CUDA_T(0x5e5d7fe23efe27ea)
+    };
+    static __device__ __constant__ const uint32_t ALT_BN128_M0 = 0xc36c280f;
+
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_r[128] = {
+            TO_CUDA_T(0x3cbf52b5446ddc8f),
+            TO_CUDA_T(0x4284f75a0d309f75),
+            TO_CUDA_T(0x0fd806059c0151a4),
+            TO_CUDA_T(0xcf962dabe0e38459),
+            TO_CUDA_T(0xdfc99a90e0206323),
+            TO_CUDA_T(0x494400afff71a106),
+            TO_CUDA_T(0xcf1721087630b8fa),
+            TO_CUDA_T(0xe7db12b0cac3aacb),
+            TO_CUDA_T(0x10787321a9ad3ceb),
+            TO_CUDA_T(0xd76d6f711a873b5e),
+            TO_CUDA_T(0x888bf88182537e83),
+            TO_CUDA_T(0x75c1fd453e84df30),
+            TO_CUDA_T(0x166a7f4b49315370),
+            TO_CUDA_T(0x9edb83c4292bd47d),
+            TO_CUDA_T(0x7e3a94320efb6cc3),
+            TO_CUDA_T(0x7074551a5ddeb9b8),
+            TO_CUDA_T(0x0fa8874e88c647d6),
+            TO_CUDA_T(0x832d1dc386d8ce9f),
+            TO_CUDA_T(0xc07353859ca49584),
+            TO_CUDA_T(0x38c3a28b73c16102),
+            TO_CUDA_T(0xa524774a74a10b7d),
+            TO_CUDA_T(0x4efa4e56eb8196d3),
+            TO_CUDA_T(0x9d75598f5dee7581),
+            TO_CUDA_T(0xc006a7ae63729081),
+            TO_CUDA_T(0xd2c78d21be1b01f2),
+            TO_CUDA_T(0xb7afb5d2465f167e),
+            TO_CUDA_T(0x95f9cdc27371fb11),
+            TO_CUDA_T(0x2c0163adf02fa7fd),
+            TO_CUDA_T(0x3203ec2ec2e51d83),
+            TO_CUDA_T(0xe2883ab9d93464b8),
+            TO_CUDA_T(0x8b4ff4af0303485f),
+            TO_CUDA_T(0x1a51512f20abcb98),
+            TO_CUDA_T(0xec4205b4efa9f9b2),
+            TO_CUDA_T(0xc001bcca46aa408e),
+            TO_CUDA_T(0x561bcbac81698cdf),
+            TO_CUDA_T(0x1d22c2e66c1ee386),
+            TO_CUDA_T(0xaad47af0bccadfeb),
+            TO_CUDA_T(0xd5ef36163492b79d),
+            TO_CUDA_T(0xaee25a3788deeba1),
+            TO_CUDA_T(0x245f46a8a0bbcb0f),
+            TO_CUDA_T(0xff15da8cec5a6973),
+            TO_CUDA_T(0xd44ba618f5cd3770),
+            TO_CUDA_T(0xccc373b82ca0574d),
+            TO_CUDA_T(0x5b3cf9ec69b5fb83),
+            TO_CUDA_T(0x44fc988b46b44542),
+            TO_CUDA_T(0xc3143a62fe62b4d0),
+            TO_CUDA_T(0x6ec179be3d199d87),
+            TO_CUDA_T(0x4b3eee9511223385),
+            TO_CUDA_T(0x5ecf7766b8b4bb9d),
+            TO_CUDA_T(0xf300f29f314f0cef),
+            TO_CUDA_T(0xba3c997d6386fb39),
+            TO_CUDA_T(0xf8c080a9228db0a6),
+            TO_CUDA_T(0x71bb708908b82cfe),
+            TO_CUDA_T(0x78f1129f2f4340e6),
+            TO_CUDA_T(0xa292c24e01adcf73),
+            TO_CUDA_T(0x94a253b4c19de6b5),
+            TO_CUDA_T(0x4b5bc56ea5ac2f13),
+            TO_CUDA_T(0x287f48fa2734a1eb),
+            TO_CUDA_T(0x98d6d594e78259cf),
+            TO_CUDA_T(0x4c23934337bc3765),
+            TO_CUDA_T(0x2985deb1822a2d35),
+            TO_CUDA_T(0x91c804b1e868a77a),
+            TO_CUDA_T(0x7a2857598eaa7b00),
+            TO_CUDA_T(0x36a5ca70688586cd)
+    };
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_rRR[128] = { /* (1<<512)%P */
+            TO_CUDA_T(0x0a793fac6c5e2701),
+            TO_CUDA_T(0xa9ad318137976462),
+            TO_CUDA_T(0xdb5efd1ea5e98c65),
+            TO_CUDA_T(0x770b684e36bcc4f7),
+            TO_CUDA_T(0xc3fc2c2f478afad6),
+            TO_CUDA_T(0xeed8af58f461ab57),
+            TO_CUDA_T(0xa7b1c06786ebb259),
+            TO_CUDA_T(0xf5f0462255540a68),
+            TO_CUDA_T(0x9024d25c9e5d5459),
+            TO_CUDA_T(0x09198ef6f3dadf99),
+            TO_CUDA_T(0x4774b576c339ee6c),
+            TO_CUDA_T(0x72df15f981262148),
+            TO_CUDA_T(0x8b8246f49afdd9c1),
+            TO_CUDA_T(0x0a437c4fe295a154),
+            TO_CUDA_T(0x8aea01eb4b4a48d9),
+            TO_CUDA_T(0x6eb3cfb6aab1f96c),
+            TO_CUDA_T(0xf17e4d703441169c),
+            TO_CUDA_T(0x8cc25fcd88a16f03),
+            TO_CUDA_T(0x316cf7057cd87098),
+            TO_CUDA_T(0xc692e4bac54f011f),
+            TO_CUDA_T(0x079badc3088cb196),
+            TO_CUDA_T(0x70fb5634631affce),
+            TO_CUDA_T(0xf631c0203e50275e),
+            TO_CUDA_T(0xa7e50324b99699a3),
+            TO_CUDA_T(0xeee6dcc5d62a9ed2),
+            TO_CUDA_T(0x1850143f1293a5af),
+            TO_CUDA_T(0x45987b78cdd6e0bd),
+            TO_CUDA_T(0x6e8547812f958b96),
+            TO_CUDA_T(0x6f4163b472b6e6f1),
+            TO_CUDA_T(0x7494f4caf7a32627),
+            TO_CUDA_T(0x8e71c2cbc88168b4),
+            TO_CUDA_T(0x6b17c0fd5cb9345e),
+            TO_CUDA_T(0xd3f2a6af81ce14b4),
+            TO_CUDA_T(0x530eaadae361684c),
+            TO_CUDA_T(0x3420d974a88fe11a),
+            TO_CUDA_T(0x5e04bab5253d101e),
+            TO_CUDA_T(0xce1353896cf1a7f6),
+            TO_CUDA_T(0xf84922447fa94fe9),
+            TO_CUDA_T(0x184ad1028bbbfa55),
+            TO_CUDA_T(0x3f5316836932d6f2),
+            TO_CUDA_T(0x2bd01e680846ef9d),
+            TO_CUDA_T(0x24909293149f5127),
+            TO_CUDA_T(0x23ef067049e088c9),
+            TO_CUDA_T(0xc0a736e63460e6b9),
+            TO_CUDA_T(0xe03773ffcde2ebab),
+            TO_CUDA_T(0x44a11704dd9ccf68),
+            TO_CUDA_T(0xdeaa3b750c43eb92),
+            TO_CUDA_T(0x05ea09fdae039b73),
+            TO_CUDA_T(0xbcd2aceef5952121),
+            TO_CUDA_T(0xfca0509b406b0974),
+            TO_CUDA_T(0xbbe5cf6e420c948c),
+            TO_CUDA_T(0x9167e058e6509cb4),
+            TO_CUDA_T(0xa5932894549299d0),
+            TO_CUDA_T(0xee4b55aaff406e28),
+            TO_CUDA_T(0x515cbe6d386d1cb2),
+            TO_CUDA_T(0x4972fcf65d2489c1),
+            TO_CUDA_T(0xded9f2d9ff65b9d5),
+            TO_CUDA_T(0x28747fe97d994052),
+            TO_CUDA_T(0xc19781dc5fddab59),
+            TO_CUDA_T(0x8657d71542ca1184),
+            TO_CUDA_T(0x7c67d7fc34811e2e),
+            TO_CUDA_T(0xce8acd23859aa1f9),
+            TO_CUDA_T(0xc86acdd2795e4b53),
+            TO_CUDA_T(0x017be71f9016b476)
+    };
+    static __device__ __constant__ __align__(16) const uint32_t ALT_BN128_rone[128] = { /* (1<<256)%P */
+            TO_CUDA_T(0x0d02b52aee488dc4),
+            TO_CUDA_T(0xf5ec2297cb3d822b),
+            TO_CUDA_T(0xc09fe7e98ffab96e),
+            TO_CUDA_T(0xc1a749507c71ee9b),
+            TO_CUDA_T(0x80d995bc7f7e7370),
+            TO_CUDA_T(0xdaeffd4002397be4),
+            TO_CUDA_T(0xc3a37bde273d1c16),
+            TO_CUDA_T(0x6093b53cd4f154d0),
+            TO_CUDA_T(0xbe1e3379594b0c50),
+            TO_CUDA_T(0xa24a423b95e31287),
+            TO_CUDA_T(0xddd01df9f6b205f0),
+            TO_CUDA_T(0x28f80aeb05ec833d),
+            TO_CUDA_T(0xa65602d2db3ab23e),
+            TO_CUDA_T(0x8491f0ef5b50ae0b),
+            TO_CUDA_T(0x0715af37c4124cf1),
+            TO_CUDA_T(0x3e2eab968885191e),
+            TO_CUDA_T(0xc15de2c5dce6e0a6),
+            TO_CUDA_T(0xf34b88f1e49cc583),
+            TO_CUDA_T(0xfe32b1e98d6da9ed),
+            TO_CUDA_T(0x1cf175d230fa7bf4),
+            TO_CUDA_T(0x6b6e22d62d7bd20b),
+            TO_CUDA_T(0xc416c6a451f9a4b1),
+            TO_CUDA_T(0x8a2a99c2884629fa),
+            TO_CUDA_T(0xffe561467235bdf9),
+            TO_CUDA_T(0xb4e1cb790793f834),
+            TO_CUDA_T(0x214128b6e683a604),
+            TO_CUDA_T(0xa818c8f6323813b9),
+            TO_CUDA_T(0x4ffa71483f416009),
+            TO_CUDA_T(0x37f04f44f46b89f3),
+            TO_CUDA_T(0x75df15189b2e6d1f),
+            TO_CUDA_T(0xd2c02d43f3f2de80),
+            TO_CUDA_T(0x96babb437d50d19d),
+            TO_CUDA_T(0x4ef7e92c41581937),
+            TO_CUDA_T(0xfff90cd6e556fdc4),
+            TO_CUDA_T(0xa790d14dfa59cc80),
+            TO_CUDA_T(0x8b74f4664f8471e6),
+            TO_CUDA_T(0x54ae143d0cd48053),
+            TO_CUDA_T(0xa84327a72db52189),
+            TO_CUDA_T(0x44769721dc845178),
+            TO_CUDA_T(0x6e82e55d7d10d3c1),
+            TO_CUDA_T(0x03a895cc4e965a33),
+            TO_CUDA_T(0xaed1679c28cb223c),
+            TO_CUDA_T(0xccf2311f4d7ea2c8),
+            TO_CUDA_T(0x930c184e592811f0),
+            TO_CUDA_T(0xec0d9dd2e52eeaf6),
+            TO_CUDA_T(0xf3af167406752cbe),
+            TO_CUDA_T(0x44fa19070b9989e0),
+            TO_CUDA_T(0xd30445abbb7731ea),
+            TO_CUDA_T(0x84c222651d2d118a),
+            TO_CUDA_T(0x33fc35833ac3cc42),
+            TO_CUDA_T(0x170d9a0a71e41318),
+            TO_CUDA_T(0x1cfdfd5b75c93d65),
+            TO_CUDA_T(0x39123ddbdd1f4c04),
+            TO_CUDA_T(0x1c3bb58342f2fc66),
+            TO_CUDA_T(0x75b4f6c7f948c232),
+            TO_CUDA_T(0xad76b12cf9886529),
+            TO_CUDA_T(0xd290ea45694f43b1),
+            TO_CUDA_T(0x5e02dc17632d7852),
+            TO_CUDA_T(0x9ca4a9ac61f698c3),
+            TO_CUDA_T(0xcf71b2f3210f2269),
+            TO_CUDA_T(0x59e88539f7574b2a),
+            TO_CUDA_T(0xb8dfed385e5d6217),
+            TO_CUDA_T(0x175ea299c55613fd),
+            TO_CUDA_T(0x2568d63e5de9e4ca)
+    };
+    static __device__ __constant__ __align__(
+            16) const uint32_t ALT_BN128_rx4[128] = { /* left-aligned value of the modulus */
+            TO_CUDA_T(0xf2fd4ad511b7723c),
+            TO_CUDA_T(0x0a13dd6834c27dd4),
+            TO_CUDA_T(0x3f60181670054691),
+            TO_CUDA_T(0x3e58b6af838e1164),
+            TO_CUDA_T(0x7f266a4380818c8f),
+            TO_CUDA_T(0x251002bffdc6841b),
+            TO_CUDA_T(0x3c5c8421d8c2e3e9),
+            TO_CUDA_T(0x9f6c4ac32b0eab2f),
+            TO_CUDA_T(0x41e1cc86a6b4f3af),
+            TO_CUDA_T(0x5db5bdc46a1ced78),
+            TO_CUDA_T(0x222fe206094dfa0f),
+            TO_CUDA_T(0xd707f514fa137cc2),
+            TO_CUDA_T(0x59a9fd2d24c54dc1),
+            TO_CUDA_T(0x7b6e0f10a4af51f4),
+            TO_CUDA_T(0xf8ea50c83bedb30e),
+            TO_CUDA_T(0xc1d15469777ae6e1),
+            TO_CUDA_T(0x3ea21d3a23191f59),
+            TO_CUDA_T(0x0cb4770e1b633a7c),
+            TO_CUDA_T(0x01cd4e1672925612),
+            TO_CUDA_T(0xe30e8a2dcf05840b),
+            TO_CUDA_T(0x9491dd29d2842df4),
+            TO_CUDA_T(0x3be9395bae065b4e),
+            TO_CUDA_T(0x75d5663d77b9d605),
+            TO_CUDA_T(0x001a9eb98dca4206),
+            TO_CUDA_T(0x4b1e3486f86c07cb),
+            TO_CUDA_T(0xdebed749197c59fb),
+            TO_CUDA_T(0x57e73709cdc7ec46),
+            TO_CUDA_T(0xb0058eb7c0be9ff6),
+            TO_CUDA_T(0xc80fb0bb0b94760c),
+            TO_CUDA_T(0x8a20eae764d192e0),
+            TO_CUDA_T(0x2d3fd2bc0c0d217f),
+            TO_CUDA_T(0x694544bc82af2e62),
+            TO_CUDA_T(0xb10816d3bea7e6c8),
+            TO_CUDA_T(0x0006f3291aa9023b),
+            TO_CUDA_T(0x586f2eb205a6337f),
+            TO_CUDA_T(0x748b0b99b07b8e19),
+            TO_CUDA_T(0xab51ebc2f32b7fac),
+            TO_CUDA_T(0x57bcd858d24ade76),
+            TO_CUDA_T(0xbb8968de237bae87),
+            TO_CUDA_T(0x917d1aa282ef2c3e),
+            TO_CUDA_T(0xfc576a33b169a5cc),
+            TO_CUDA_T(0x512e9863d734ddc3),
+            TO_CUDA_T(0x330dcee0b2815d37),
+            TO_CUDA_T(0x6cf3e7b1a6d7ee0f),
+            TO_CUDA_T(0x13f2622d1ad11509),
+            TO_CUDA_T(0x0c50e98bf98ad341),
+            TO_CUDA_T(0xbb05e6f8f466761f),
+            TO_CUDA_T(0x2cfbba544488ce15),
+            TO_CUDA_T(0x7b3ddd9ae2d2ee75),
+            TO_CUDA_T(0xcc03ca7cc53c33bd),
+            TO_CUDA_T(0xe8f265f58e1bece7),
+            TO_CUDA_T(0xe30202a48a36c29a),
+            TO_CUDA_T(0xc6edc22422e0b3fb),
+            TO_CUDA_T(0xe3c44a7cbd0d0399),
+            TO_CUDA_T(0x8a4b093806b73dcd),
+            TO_CUDA_T(0x52894ed306779ad6),
+            TO_CUDA_T(0x2d6f15ba96b0bc4e),
+            TO_CUDA_T(0xa1fd23e89cd287ad),
+            TO_CUDA_T(0x635b56539e09673c),
+            TO_CUDA_T(0x308e4d0cdef0dd96),
+            TO_CUDA_T(0xa6177ac608a8b4d5),
+            TO_CUDA_T(0x472012c7a1a29de8),
+            TO_CUDA_T(0xe8a15d663aa9ec02),
+            TO_CUDA_T(0xda9729c1a2161b35)
+    };
+    static __device__ __constant__ __align__(
+        16) const uint32_t ALT_BN128_MODN[128] = {
+            TO_CUDA_T(0xb4b264f378483d91),
+            TO_CUDA_T(0xb1cd3368de257938),
+            TO_CUDA_T(0x9483256594ae3d84),
+            TO_CUDA_T(0x1753a6f1ca43096a),
+            TO_CUDA_T(0x45116089585914d0),
+            TO_CUDA_T(0xf1466250d5bb1200),
+            TO_CUDA_T(0xe07928ff97ac4913),
+            TO_CUDA_T(0x5d37547652617dbc),
+            TO_CUDA_T(0xd233041d006eb0fe),
+            TO_CUDA_T(0x43ed9a261f25013c),
+            TO_CUDA_T(0x67953152d72e497d),
+            TO_CUDA_T(0xf470050a81aa8be4),
+            TO_CUDA_T(0x49e0fd717f16065b),
+            TO_CUDA_T(0x1041cbd1c0ecd184),
+            TO_CUDA_T(0x8e61a43e48828836),
+            TO_CUDA_T(0x8b4fdb6f76285ebb),
+            TO_CUDA_T(0x76b577c4de722962),
+            TO_CUDA_T(0x69731b77cfa80bfe),
+            TO_CUDA_T(0x02ca3316ea6d6882),
+            TO_CUDA_T(0x6bf54125ff72fbeb),
+            TO_CUDA_T(0x99eab8ac13ecdfef),
+            TO_CUDA_T(0x181112bc218b983f),
+            TO_CUDA_T(0x4b04014fe46f33e0),
+            TO_CUDA_T(0x3055633c44e2563c),
+            TO_CUDA_T(0x9998567d30561cf1),
+            TO_CUDA_T(0xa0882b0a74ca8955),
+            TO_CUDA_T(0xcaa45f533165d07f),
+            TO_CUDA_T(0x66f8da0263a09d5c),
+            TO_CUDA_T(0x0fe4e306bda0d4ad),
+            TO_CUDA_T(0x1f437812433991e5),
+            TO_CUDA_T(0x5a492b0623697fd4),
+            TO_CUDA_T(0x90a36a42ca7d3810),
+            TO_CUDA_T(0xa1a61571e0e73d9c),
+            TO_CUDA_T(0x8b35255f6632d753),
+            TO_CUDA_T(0x3a7ced47012e82b5),
+            TO_CUDA_T(0x6fca3c5a19d4e023),
+            TO_CUDA_T(0xfe3362b97319f965),
+            TO_CUDA_T(0x4ff9d05e7ca2e77a),
+            TO_CUDA_T(0xd4e8533f2f026f8d),
+            TO_CUDA_T(0x1eeeab8a0a7dc20e),
+            TO_CUDA_T(0x83b0a6b880d42d25),
+            TO_CUDA_T(0xdd0435a60752663d),
+            TO_CUDA_T(0x065f2baf7fdf118b),
+            TO_CUDA_T(0x8774e2606c43caee),
+            TO_CUDA_T(0x75e1453225a90865),
+            TO_CUDA_T(0x82746d8c877bbbc3),
+            TO_CUDA_T(0x71dcdb239f4a2e1e),
+            TO_CUDA_T(0xc706bac3d08fd33a),
+            TO_CUDA_T(0xe59df3e53c0e5713),
+            TO_CUDA_T(0x022b9bba805919d0),
+            TO_CUDA_T(0xfd618fae83f98b8d),
+            TO_CUDA_T(0x23b78240bcaa4ff9),
+            TO_CUDA_T(0x7365f77b329f8bc2),
+            TO_CUDA_T(0x0e5f4868f7834245),
+            TO_CUDA_T(0x25b848dfa1a5f5b7),
+            TO_CUDA_T(0x748ad774a95b5ea4),
+            TO_CUDA_T(0x9c834cbd99749e37),
+            TO_CUDA_T(0x551b8d763fa44cd2),
+            TO_CUDA_T(0x20745f1d463ed7aa),
+            TO_CUDA_T(0x09ce8bc263bd761c),
+            TO_CUDA_T(0x3e6923adb75a055f),
+            TO_CUDA_T(0x63f218e308f771f5),
+            TO_CUDA_T(0xaece76c8da3344e0),
+            TO_CUDA_T(0xf0d82727f9f1d366)
+    };
+
+    static __device__ __constant__ const uint32_t ALT_BN128_m0 = 0x78483d91;
+
+    // device-side field types
+    typedef mont_t<4094, device::ALT_BN128_P, 
+                device::ALT_BN128_M0,
+                device::ALT_BN128_RR, 
+                device::ALT_BN128_one,
+                device::ALT_BN128_Px4,
+                device::ALT_BN128_MODn> fp_mont;
+
+    struct fp_t : public fp_mont
+    {
+        using mem_t = fp_t;
+
+        __host__ __device__  fp_t() = default;
+
+        __host__ __device__  fp_t(const fp_mont &a) : fp_mont(a) {}
+
+        __device__ fp_t(uint32_t a) : fp_mont(a){}
+    };
+
+    typedef mont_t<4094, device::ALT_BN128_r,            // 模数 N = r
+                device::ALT_BN128_m0,                   // m0 �? N'
+                device::ALT_BN128_rRR,                  // R^2 mod r
+                device::ALT_BN128_rone,                 // 1 �? Montgomery 表示 = R mod r
+                device::ALT_BN128_rx4,                  // 4 �? Montgomery 表示 = 4R mod r
+                device::ALT_BN128_MODN> fr_mont;
+
+    struct fr_t : public fr_mont
+    {
+        using mem_t = fr_t;
+
+        __host__ __device__ __forceinline__ fr_t() {}
+
+        __device__ __forceinline__ fr_t(const uint32_t &a) : fr_mont(a){}
+
+        __device__ __forceinline__ fr_t(const fr_mont &a) : fr_mont(a) {}
+    };
+
+    static constexpr int LAMBDA = 4094;
+}
+
+// host-side field types
+// # include <blst_t.hpp>
+
+// namespace host
+// {
+//     static const vec256 ALT_BN128_P = {
+//             TO_CUDA_T(0xc381353af3ca1b25),
+//             TO_CUDA_T(0xf879374b6cb8c786),
+//             TO_CUDA_T(0x2c07e62e04f2050a),
+//             TO_CUDA_T(0x43336a7fc8ba450f),
+//             TO_CUDA_T(0xba0408ad9642b1dc),
+//             TO_CUDA_T(0x6e510015ce648011),
+//             TO_CUDA_T(0x158029249e28032b),
+//             TO_CUDA_T(0x8aecbe63dd05e394),
+//             TO_CUDA_T(0x5e736f0a3c868f69),
+//             TO_CUDA_T(0x036c7d58fe946c6d),
+//             TO_CUDA_T(0x99f797c782418c64),
+//             TO_CUDA_T(0x1f8fc83d85208ad8),
+//             TO_CUDA_T(0xf01413b6bd00ff6f),
+//             TO_CUDA_T(0x2bbc442d75dfe4e8),
+//             TO_CUDA_T(0x980c59ef9be0e4b9),
+//             TO_CUDA_T(0x38a725f7b5dcacf8)
+//     };
+//     static const vec256 ALT_BN128_RR = {    /* (1<<512)%P */
+//             TO_CUDA_T(0x5077e3988fb21140),
+//             TO_CUDA_T(0x6799152746790811),
+//             TO_CUDA_T(0x18526b0df2c6bf6a),
+//             TO_CUDA_T(0x6520873bb9a8ab0f),
+//             TO_CUDA_T(0x999aea1c811b46e2),
+//             TO_CUDA_T(0xd90781e7dad6978c),
+//             TO_CUDA_T(0x09da8b64fa210f4d),
+//             TO_CUDA_T(0xbf591ecf678fffa7),
+//             TO_CUDA_T(0x5e8e1a0764ba1ebd),
+//             TO_CUDA_T(0x80e49e3551ffe65a),
+//             TO_CUDA_T(0xe79e82695edc6bd7),
+//             TO_CUDA_T(0x759d298be4f9e206),
+//             TO_CUDA_T(0xc7381c9083236c50),
+//             TO_CUDA_T(0xbd2eb2e8e5ea8481),
+//             TO_CUDA_T(0xc68a17ef6d565279),
+//             TO_CUDA_T(0x1592a509b821dd3e)
+//     };
+//     static const vec256 ALT_BN128_ONE = {   /* (1<<256)%P */
+//             TO_CUDA_T(0xf1fb2b1430d7936c),
+//             TO_CUDA_T(0x1e1b22d24d1ce1e4),
+//             TO_CUDA_T(0x4fe06747ec37ebd4),
+//             TO_CUDA_T(0xf3325600dd16ebc3),
+//             TO_CUDA_T(0x17efdd49a6f5388e),
+//             TO_CUDA_T(0x46bbffa8c66dffb9),
+//             TO_CUDA_T(0xa9ff5b6d875ff352),
+//             TO_CUDA_T(0xd44d06708be871af),
+//             TO_CUDA_T(0x863243d70de5c259),
+//             TO_CUDA_T(0xf24e0a9c05ae4e4a),
+//             TO_CUDA_T(0x9821a0e1f6f9ce6f),
+//             TO_CUDA_T(0x81c0df09eb7dd49d),
+//             TO_CUDA_T(0x3fafb1250bfc0243),
+//             TO_CUDA_T(0x510eef4a28806c5c),
+//             TO_CUDA_T(0x9fce9841907c6d1b),
+//             TO_CUDA_T(0x1d636821288d4c1d)
+//     };
+//     typedef blst_256_t<1022, ALT_BN128_P, 0xb0361ed645ff7753u,
+//             ALT_BN128_RR, ALT_BN128_ONE> fp_mont;
+
+//     struct fp_t : public fp_mont
+//     {
+//         using mem_t = fp_t;
+
+//         inline fp_t() = default;
+
+//         inline fp_t(const fp_mont &a) : fp_mont(a) {}
+//     };
+
+//     static const vec256 ALT_BN128_r = {
+//             TO_CUDA_T(0x47e4fc46461db611),
+//             TO_CUDA_T(0x9cfe1ebb5734e6ac),
+//             TO_CUDA_T(0xbe4966ed7a8a5d71),
+//             TO_CUDA_T(0xad6e6caabb972709),
+//             TO_CUDA_T(0x395bd0259959b38b),
+//             TO_CUDA_T(0x32b95c2e34d84153),
+//             TO_CUDA_T(0x03bdcb769f912d12),
+//             TO_CUDA_T(0x3980d3b7dc1ab70c),
+//             TO_CUDA_T(0xcb4841f87c1b4f6a),
+//             TO_CUDA_T(0x2e7678b3d18b73bd),
+//             TO_CUDA_T(0x49c059c363847a9c),
+//             TO_CUDA_T(0x7aad7f55d0170ee6),
+//             TO_CUDA_T(0x3db604b815076f5a),
+//             TO_CUDA_T(0xcbf08e442e2557a0),
+//             TO_CUDA_T(0x325212768f9d218f),
+//             TO_CUDA_T(0x237cdc3504e2e9f7)
+//     };
+//     static const vec256 ALT_BN128_rRR = {   /* (1<<512)%r */
+//             TO_CUDA_T(0x00588eb548837425),
+//             TO_CUDA_T(0xb7bbf82845bede17),
+//             TO_CUDA_T(0xe04eb526b8bbb1c0),
+//             TO_CUDA_T(0x7a2679b9e108900f),
+//             TO_CUDA_T(0xba2d4c4dbdc501dc),
+//             TO_CUDA_T(0x7f2f8c029e4a65df),
+//             TO_CUDA_T(0xe33996ee13be1115),
+//             TO_CUDA_T(0x4cdd1c8449bdb6b0),
+//             TO_CUDA_T(0xaf259f16ca9c3994),
+//             TO_CUDA_T(0x8b3620e43d626562),
+//             TO_CUDA_T(0xc868d761cdbda303),
+//             TO_CUDA_T(0x8fb87128363a1e6a),
+//             TO_CUDA_T(0x3ccf745a76326434),
+//             TO_CUDA_T(0xf8df334f23ed7888),
+//             TO_CUDA_T(0x3e7387f3fd359353),
+//             TO_CUDA_T(0x14c14c9bc6d741f5)
+//     };
+//     static const vec256 ALT_BN128_rONE = {  /* (1<<256)%r */
+//             TO_CUDA_T(0x08bd1a1415300589),
+//             TO_CUDA_T(0xb50d28e09d8db14a),
+//             TO_CUDA_T(0xcbfe2f81a63771e4),
+//             TO_CUDA_T(0x41fb0754deddeebb),
+//             TO_CUDA_T(0x6e7d4ef8ce8c172e),
+//             TO_CUDA_T(0x9cee7abc8e1636b9),
+//             TO_CUDA_T(0xe5cf6fc1a307c480),
+//             TO_CUDA_T(0x6d7a35f8fb44feab),
+//             TO_CUDA_T(0x710632349b40d418),
+//             TO_CUDA_T(0xbac2b315452fd5cf),
+//             TO_CUDA_T(0xfbbd8ba84760a5ba),
+//             TO_CUDA_T(0xa54184a74f5e97b3),
+//             TO_CUDA_T(0x5005def76ccbf486),
+//             TO_CUDA_T(0x6c6c1c22bcfa9a9e),
+//             TO_CUDA_T(0x9fc17ec212b41511),
+//             TO_CUDA_T(0x0795fa8cddcb9a3d)
+//     };
+//     typedef blst_256_t<1022, ALT_BN128_r, 0xa8a1622fd074050fu,
+//             ALT_BN128_rRR, ALT_BN128_rONE> fr_mont;
+
+//     struct fr_t : public fr_mont
+//     {
+//         using mem_t = fr_t;
+
+//         inline fr_t() = default;
+
+//         inline fr_t(const fr_mont &a) : fr_mont(a) {}
+//     };
+// }
+
+# include <blst_t.hpp>
+
+namespace host
+{
+    static const vec256 ALT_BN128_P = {
+            TO_LIMB_T(0x3c208c16d87cfd47), TO_LIMB_T(0x97816a916871ca8d),
+            TO_LIMB_T(0xb85045b68181585d), TO_LIMB_T(0x30644e72e131a029)
+    };
+    static const vec256 ALT_BN128_RR = {    /* (1<<512)%P */
+            TO_LIMB_T(0xf32cfc5b538afa89), TO_LIMB_T(0xb5e71911d44501fb),
+            TO_LIMB_T(0x47ab1eff0a417ff6), TO_LIMB_T(0x06d89f71cab8351f),
+    };
+    static const vec256 ALT_BN128_ONE = {   /* (1<<256)%P */
+            TO_LIMB_T(0xd35d438dc58f0d9d), TO_LIMB_T(0x0a78eb28f5c70b3d),
+            TO_LIMB_T(0x666ea36f7879462c), TO_LIMB_T(0x0e0a77c19a07df2f)
+    };
+    typedef blst_256_t<254, ALT_BN128_P, 0x87d20782e4866389u,
+            ALT_BN128_RR, ALT_BN128_ONE> fp_mont;
+
+    struct fp_t : public fp_mont
+    {
+        using mem_t = fp_t;
+
+        inline fp_t() = default;
+
+        inline fp_t(const fp_mont &a) : fp_mont(a) {}
+    };
+
+    static const vec256 ALT_BN128_r = {
+            TO_LIMB_T(0x43e1f593f0000001), TO_LIMB_T(0x2833e84879b97091),
+            TO_LIMB_T(0xb85045b68181585d), TO_LIMB_T(0x30644e72e131a029)
+    };
+    static const vec256 ALT_BN128_rRR = {   /* (1<<512)%r */
+            TO_LIMB_T(0x1bb8e645ae216da7), TO_LIMB_T(0x53fe3ab1e35c59e3),
+            TO_LIMB_T(0x8c49833d53bb8085), TO_LIMB_T(0x0216d0b17f4e44a5)
+    };
+    static const vec256 ALT_BN128_rONE = {  /* (1<<256)%r */
+            TO_LIMB_T(0xac96341c4ffffffb), TO_LIMB_T(0x36fc76959f60cd29),
+            TO_LIMB_T(0x666ea36f7879462e), TO_LIMB_T(0x0e0a77c19a07df2f)
+    };
+    typedef blst_256_t<254, ALT_BN128_r, 0xc2e1f593efffffffu,
+            ALT_BN128_rRR, ALT_BN128_rONE> fr_mont;
+
+    struct fr_t : public fr_mont
+    {
+        using mem_t = fr_t;
+
+        inline fr_t() = default;
+
+        inline fr_t(const fr_mont &a) : fr_mont(a) {}
+    };
+}
+
+# if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic pop
+# endif
+# pragma nv_diag_default 20012
+
+#endif
