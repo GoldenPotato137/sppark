@@ -20,10 +20,14 @@ list(APPEND SOURCES "util/all_gpus.cu")
 
 # Single-definition TU for device constants (avoid per-TU .const duplication).
 # This must match the field header included by clients (see SPPARK_FF_ALT_VARIANT).
-set(SPPARK_FF_ALT_VARIANT "2048" CACHE STRING "ALT curve variant for device constants: 1024, 2048, 4096, 6144, 8192")
-set_property(CACHE SPPARK_FF_ALT_VARIANT PROPERTY STRINGS 1024 2048 4096 6144 8192)
+set(SPPARK_FF_ALT_VARIANT "2048" CACHE STRING "ALT curve variant for device constants: 128, 381, 1024, 2048, 4096, 6144, 8192")
+set_property(CACHE SPPARK_FF_ALT_VARIANT PROPERTY STRINGS 128 381 1024 2048 4096 6144 8192)
 
-if(SPPARK_FF_ALT_VARIANT STREQUAL "1024")
+if(SPPARK_FF_ALT_VARIANT STREQUAL "128")
+    list(APPEND SOURCES)
+elseif(SPPARK_FF_ALT_VARIANT STREQUAL "381")
+    list(APPEND SOURCES)
+elseif(SPPARK_FF_ALT_VARIANT STREQUAL "1024")
     list(APPEND SOURCES "ff/alt1024_constants.cu")
 elseif(SPPARK_FF_ALT_VARIANT STREQUAL "2048")
     list(APPEND SOURCES "ff/alt2048_constants.cu")
@@ -34,7 +38,7 @@ elseif(SPPARK_FF_ALT_VARIANT STREQUAL "6144")
 elseif(SPPARK_FF_ALT_VARIANT STREQUAL "8192")
     list(APPEND SOURCES "ff/alt8192_constants.cu")
 else()
-    message(FATAL_ERROR "Unsupported SPPARK_FF_ALT_VARIANT='${SPPARK_FF_ALT_VARIANT}'. Expected 1024, 2048, 4096, 6144, or 8192.")
+    message(FATAL_ERROR "Unsupported SPPARK_FF_ALT_VARIANT='${SPPARK_FF_ALT_VARIANT}'. Expected 128, 381, 1024, 2048, 4096, 6144, or 8192.")
 endif()
 
 add_library(sppark ${SOURCES} ${LIB_BLST_SRC})
