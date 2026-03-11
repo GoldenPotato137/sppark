@@ -1322,10 +1322,12 @@ namespace host
     template<typename T>
     __host__ static void print_num(T num)
     {
+        uint64_t limbs[sizeof(T)/sizeof(uint64_t)];
         num.from();
+        memcpy(limbs, &num, sizeof(T));
         printf("0x");
-        for (int i = num.n-1; i >= 0; i--)
-            printf("%llx", num[i]);
+        for (int i = (int)(sizeof(T)/sizeof(uint64_t)) - 1; i >= 0; i--)
+            printf("%llx", (unsigned long long)limbs[i]);
         printf("\n");
         num.to();
     }

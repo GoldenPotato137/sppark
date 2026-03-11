@@ -6,6 +6,7 @@
 #define __SPPARK_FF_BLS12_377_HPP__
 
 #include <cstdint>
+#include "mont_t.cuh"
 #ifdef __CUDACC__
 
 namespace device {
@@ -49,29 +50,30 @@ namespace device {
         TO_CUDA_T(0x05a268f2e1bd800a), TO_CUDA_T(0x955b2af4d1652ab3)
     };
     static __device__ __constant__ /*const*/ uint32_t BLS12_377_m0 = 0xffffffff;
+
+    typedef mont_t<377, device::BLS12_377_P, device::BLS12_377_M0,
+                        device::BLS12_377_RR, device::BLS12_377_one,
+                        device::BLS12_381_Px128> fp_mont;
+    struct fp_t : public fp_mont {
+        using mem_t = fp_t;
+        __host__ __device__ __forceinline__ fp_t() {}
+        __device__ __forceinline__ fp_t(uint32_t a) : fp_mont(a) {}
+        __host__ __device__ __forceinline__ fp_t(const fp_mont& a) : fp_mont(a) {}
+    };
+    typedef mont_t<253, device::BLS12_377_r, device::BLS12_377_m0,
+                        device::BLS12_377_rRR, device::BLS12_377_rone,
+                        device::BLS12_377_rx8> fr_mont;
+    struct fr_t : public fr_mont {
+        using mem_t = fr_t;
+        __host__ __device__ __forceinline__ fr_t() {}
+        __device__ __forceinline__ fr_t(uint32_t a) : fr_mont(a) {}
+        __host__ __device__ __forceinline__ fr_t(const fr_mont& a) : fr_mont(a) {}
+    };
+
+    static constexpr int LAMBDA = 253;
 }
-# ifdef __CUDA_ARCH__   // device-side field types
-# include "mont_t.cuh"
-typedef mont_t<377, device::BLS12_377_P, device::BLS12_377_M0,
-                    device::BLS12_377_RR, device::BLS12_377_one,
-                    device::BLS12_381_Px128> fp_mont;
-struct fp_t : public fp_mont {
-    using mem_t = fp_t;
-    __device__ __forceinline__ fp_t() {}
-    __device__ __forceinline__ fp_t(const fp_mont& a) : fp_mont(a) {}
-};
-typedef mont_t<253, device::BLS12_377_r, device::BLS12_377_m0,
-                    device::BLS12_377_rRR, device::BLS12_377_rone,
-                    device::BLS12_377_rx8> fr_mont;
-struct fr_t : public fr_mont {
-    using mem_t = fr_t;
-    __device__ __forceinline__ fr_t() {}
-    __device__ __forceinline__ fr_t(const fr_mont& a) : fr_mont(a) {}
-};
-# endif
 #endif
 
-#ifndef __CUDA_ARCH__   // host-side field types
 # include <blst_t.hpp>
 
 # if defined(__GNUC__) && !defined(__clang__)
@@ -79,6 +81,7 @@ struct fr_t : public fr_mont {
 #  pragma GCC diagnostic ignored "-Wsubobject-linkage"
 # endif
 
+namespace host {
 static const vec384 BLS12_377_P = {
     TO_LIMB_T(0x8508c00000000001), TO_LIMB_T(0x170b5d4430000000),
     TO_LIMB_T(0x1ef3622fba094800), TO_LIMB_T(0x1a22d9f300f5138f),
@@ -94,8 +97,8 @@ static const vec384 BLS12_377_ONE = {   /* (1<<384)%P */
     TO_LIMB_T(0x9f7db3a98a7d3ff2), TO_LIMB_T(0x7b4e97b76e7c6305),
     TO_LIMB_T(0x4cf495bf803c84e8), TO_LIMB_T(0x008d6661e2fdf49a)
 };
-typedef blst_384_t<377, BLS12_377_P, 0x8508bfffffffffffu,
-                        BLS12_377_RR, BLS12_377_ONE> fp_mont;
+typedef blst_384_t<377, host::BLS12_377_P, 0x8508bfffffffffffu,
+                        host::BLS12_377_RR, host::BLS12_377_ONE> fp_mont;
 struct fp_t : public fp_mont {
     using mem_t = fp_t;
     inline fp_t() {}
@@ -114,16 +117,28 @@ static const vec256 BLS12_377_rONE = {  /* (1<<256)%r */
     TO_LIMB_T(0x7d1c7ffffffffff3), TO_LIMB_T(0x7257f50f6ffffff2),
     TO_LIMB_T(0x16d81575512c0fee), TO_LIMB_T(0x0d4bda322bbb9a9d)
 };
-typedef blst_256_t<253, BLS12_377_r, 0xa117fffffffffffu,
-                        BLS12_377_rRR, BLS12_377_rONE> fr_mont;
+typedef blst_256_t<253, host::BLS12_377_r, 0xa117fffffffffffu,
+                        host::BLS12_377_rRR, host::BLS12_377_rONE> fr_mont;
 struct fr_t : public fr_mont {
     using mem_t = fr_t;
     inline fr_t() {}
     inline fr_t(const fr_mont& a) : fr_mont(a) {}
 };
+}
+
+# if defined(__CUDA_ARCH__)
+using fp_mont = device::fp_mont;
+using fp_t = device::fp_t;
+using fr_mont = device::fr_mont;
+using fr_t = device::fr_t;
+# else
+using fp_mont = host::fp_mont;
+using fp_t = host::fp_t;
+using fr_mont = host::fr_mont;
+using fr_t = host::fr_t;
+# endif
 
 # if defined(__GNUC__) && !defined(__clang__)
 #  pragma GCC diagnostic pop
 # endif
-#endif
 #endif
