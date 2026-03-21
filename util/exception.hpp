@@ -9,6 +9,7 @@
 #include <cstring>
 #include <string>
 #include <stdexcept>
+#include <vector>
 
 class sppark_error : public std::runtime_error {
     int _code;
@@ -17,21 +18,24 @@ class sppark_error : public std::runtime_error {
     inline std::string fmt_errno(int errnum, const char* fmt, Types... args)
     {
         const size_t ERRLEN = 48;
-        size_t len = std::snprintf(nullptr, 0, fmt, args...);
-        std::string ret(len + ERRLEN, '\0');
-        std::snprintf(&ret[0], len + 1, fmt, args...);
-        auto errmsg = &ret[len];
+        const int prefix_len = std::snprintf(nullptr, 0, fmt, args...);
+        if (prefix_len < 0)
+            return {};
+
+        std::vector<char> ret(static_cast<size_t>(prefix_len) + ERRLEN + 1, '\0');
+        std::snprintf(ret.data(), static_cast<size_t>(prefix_len) + 1, fmt, args...);
+        auto errmsg = ret.data() + prefix_len;
 #if defined(_WIN32)
         (void)strerror_s(errmsg, ERRLEN, errnum);
 #elif defined(_GNU_SOURCE)
         auto errstr = strerror_r(errnum, errmsg, ERRLEN);
         if (errstr != errmsg)
-            strncpy(errmsg, errstr, ERRLEN - 1);
+            std::strncpy(errmsg, errstr, ERRLEN - 1);
 #else
         (void)strerror_r(errnum, errmsg, ERRLEN);
 #endif
-        ret.resize(len + std::strlen(errmsg));
-        return ret;
+        errmsg[ERRLEN - 1] = '\0';
+        return {ret.data(), static_cast<size_t>(prefix_len) + std::strlen(errmsg)};
     }
 
 public:
@@ -49,11 +53,13 @@ public:
 template<typename... Types>
 inline std::string fmt(const char* fmt, Types... args)
 {
-    size_t len = std::snprintf(nullptr, 0, fmt, args...);
-    std::string ret(++len, '\0');
-    std::snprintf(&ret.front(), len, fmt, args...);
-    ret.resize(--len);
-    return ret;
+    const int len = std::snprintf(nullptr, 0, fmt, args...);
+    if (len < 0)
+        return {};
+
+    std::vector<char> ret(static_cast<size_t>(len) + 1, '\0');
+    std::snprintf(ret.data(), ret.size(), fmt, args...);
+    return {ret.data(), static_cast<size_t>(len)};
 }
 
 #endif
