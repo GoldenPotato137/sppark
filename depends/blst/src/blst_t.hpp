@@ -58,12 +58,12 @@ class blst_384_t {
 private:
     vec384 val;
 
+public:
     inline operator const limb_t*() const           { return val;    }
     inline operator limb_t*()                       { return val;    }
     inline limb_t& operator[](size_t i)             { return val[i]; }
     inline const limb_t& operator[](size_t i) const { return val[i]; }
 
-public:
     static const size_t n = sizeof(vec384)/sizeof(limb_t);
     static const size_t nbits = N;
     static constexpr size_t bit_length() { return N; }
